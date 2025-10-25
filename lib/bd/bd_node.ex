@@ -44,7 +44,7 @@ defmodule BD.BD_Node do
     {:ok, _pid} = BD_LinkLayer.start_link(name)
     BD_LinkLayer.subscribe(name, {:gen, atom_name(name)}, :ll_deliver)
 
-    Process.send_after(self(), {:sync}, init_state.conf.sync_interval)
+    Process.send_after(self(), {:periodic_sync}, init_state.conf.sync_interval)
 
     {:ok, init_state}
   end
@@ -86,10 +86,11 @@ defmodule BD.BD_Node do
 
     two_replicas_delta = DB.compute_delta_from_crdt_vcs(state.db, remote_crdt_vcs)
     if Kernel.map_size(two_replicas_delta) > 0 do
-      BD_LinkLayer.send_to_replica(state.name, remote_replica_name, {:remote_deltas, two_replicas_delta})
+      Logger.debug("from node #{inspect(state.name)} sending delta #{inspect(two_replicas_delta)} to replica #{inspect(remote_replica_name)}")
+      BD_LinkLayer.send_to_replica(state.name, remote_replica_name, {:remote_deltas, two_replicas_delta}, nil)
       strictly_older_crdt_vcs = DB.get_strictly_older_crdt_vcs(state.db, remote_crdt_vcs)
       if Kernel.map_size(strictly_older_crdt_vcs) > 0 do
-        BD_LinkLayer.send_to_replica(state.name, remote_replica_name, {:remote_crdt_vcs, state.name, strictly_older_crdt_vcs})
+        BD_LinkLayer.send_to_replica(state.name, remote_replica_name, {:remote_crdt_vcs, state.name, strictly_older_crdt_vcs}, nil)
       end
     end
 
@@ -111,11 +112,11 @@ defmodule BD.BD_Node do
 
 
   @impl true
-  def handle_info({:sync}, state) do
+  def handle_info({:periodic_sync}, state) do
     # Logger.debug("node #{inspect(state.name)} syncing with buffer: #{inspect(state.buffer)}")
     BD_LinkLayer.propagate(state.name, {:remote_crdt_vcs, state.name, DB.get_all_vcs(state.db)}, state.conf.sync_method)
 
-    Process.send_after(self(), {:sync}, state.conf.sync_interval)
+    Process.send_after(self(), {:periodic_sync}, state.conf.sync_interval)
     {:noreply, state}
   end
 

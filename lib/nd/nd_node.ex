@@ -43,7 +43,7 @@ defmodule Node.ND_Node do
     {:ok, _pid} = ND_LinkLayer.start(name)
     ND_LinkLayer.subscribe(name, {:gen, atom_name(name)}, :ll_deliver)
 
-    Process.send_after(self(), {:sync}, init_state.conf.sync_interval)
+    Process.send_after(self(), {:periodic_sync}, init_state.conf.sync_interval)
 
     {:ok, init_state}
   end
@@ -133,11 +133,11 @@ defmodule Node.ND_Node do
 
 
   @impl true
-  def handle_info({:sync}, state) do
+  def handle_info({:periodic_sync}, state) do
     # Logger.debug("node #{inspect(state.name)} syncing with buffer: #{inspect(state.buffer)}")
     ND_LinkLayer.propagate(state.name, {:remote_sync, state.buffer}, bp?: state.conf.bp?)
 
-    Process.send_after(self(), {:sync}, state.conf.sync_interval)
+    Process.send_after(self(), {:periodic_sync}, state.conf.sync_interval)
     {:noreply, %{state | buffer: MapSet.new()}}
   end
 

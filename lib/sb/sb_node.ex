@@ -45,7 +45,7 @@ defmodule Node.SB_Node do
     {:ok, _pid} = SB_LinkLayer.start(name)
     SB_LinkLayer.subscribe(name, {:gen, atom_name(name)}, :ll_deliver)
 
-    Process.send_after(self(), {:sync}, init_state.conf.sync_interval)
+    Process.send_after(self(), {:periodic_sync}, init_state.conf.sync_interval)
 
     {:ok, init_state}
   end
@@ -98,7 +98,7 @@ defmodule Node.SB_Node do
 
 
   @impl true
-  def handle_info({:sync}, %{conf: conf, crdts: crdts, updated_crdts: updated_crdts, name: name} = state) do
+  def handle_info({:periodic_sync}, %{conf: conf, crdts: crdts, updated_crdts: updated_crdts, name: name} = state) do
     # Logger.debug("node #{inspect(name)} syncing")
     if conf.sync_method == :full do
       SB_LinkLayer.propagate(name, {:remote_sync, crdts})
@@ -108,7 +108,7 @@ defmodule Node.SB_Node do
         SB_LinkLayer.propagate(name, {:remote_sync, to_send})
       end
     end
-    Process.send_after(self(), {:sync}, conf.sync_interval)
+    Process.send_after(self(), {:periodic_sync}, conf.sync_interval)
     {:noreply, %{state | updated_crdts: MapSet.new()}}
   end
 

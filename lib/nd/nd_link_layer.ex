@@ -1,12 +1,12 @@
 defmodule LinkLayer.ND_LinkLayer do
-  use GenServer
   require Logger
 
-  def initial_state(name) do
+  def initial_state(_name) do
     %{}
   end
-  def start(name) do
-    BaseLinkLayer.start(__MODULE__, name)
+
+  def start_link(name) do
+    BaseLinkLayer.start_link(__MODULE__, name)
   end
 
   def subscribe(name, subscription, topic) do

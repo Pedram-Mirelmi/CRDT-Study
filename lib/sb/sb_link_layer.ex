@@ -5,8 +5,8 @@ defmodule LinkLayer.SB_LinkLayer do
     %{}
   end
 
-  def start(name) do
-    BaseLinkLayer.start(__MODULE__, name)
+  def start_link(name) do
+    BaseLinkLayer.start_link(__MODULE__, name)
   end
 
   def subscribe(name, subscription, topic) do

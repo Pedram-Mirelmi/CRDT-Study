@@ -24,7 +24,6 @@ defmodule BaseLinkLayer do
   end
 
   def start_link(module, name) do
-
     GenServer.start_link(
       __MODULE__,
       initial_state(name, module),
@@ -81,6 +80,10 @@ defmodule BaseLinkLayer do
     GenServer.cast(atom_name(name), {:propagate, msg, conf})
   end
 
+  def send_to_replica(from, to, msg, conf) do
+    GenServer.cast(atom_name(from), {:send_to_replica, to, msg, conf})
+  end
+
   def subscribe(name, subscription, topic) do
     GenServer.cast(atom_name(name), {:subscribe, subscription, topic})
   end
@@ -89,6 +92,13 @@ defmodule BaseLinkLayer do
   def handle_cast({:propagate, msg, conf}, state) do
     new_state = state.module.handle_propagate(state, msg, conf)
     {:noreply, new_state}
+  end
+
+  @impl true
+  def handle_cast({:send_to_replica, to, msg, _conf}, state) do
+    BaseLinkLayer.deliver(to, msg)
+    record_network_traffic(state, msg, :out)
+    {:noreply, state}
   end
 
   @impl true
