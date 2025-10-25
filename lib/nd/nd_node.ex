@@ -1,14 +1,20 @@
 defmodule Node.ND_Node do
   alias LinkLayer.ND_LinkLayer
   alias Crdts.CRDT
-  use GenServer
+  @behaviour BaseNode
   require Logger
 
   def atom_name(node_name) do
     node_name |> String.to_atom()
   end
 
-  defp initial_state(name, conf) do
+  @impl true
+  def ll_module() do
+    ND_LinkLayer
+  end
+
+  @impl true
+  def initial_state(name, conf) do
     %{
       conf: conf,
       crdts: %{},
@@ -16,44 +22,20 @@ defmodule Node.ND_Node do
       name: name
     }
   end
-
   def start_link(name, conf) do
-    GenServer.start_link(
-      __MODULE__,
-      initial_state(name, conf),
-      name: atom_name(name)
-    )
+    BaseNode.start_link(name, conf, __MODULE__)
   end
 
   def start(name, conf) do
-    GenServer.start(
-      __MODULE__,
-      initial_state(name, conf),
-      name: atom_name(name)
-    )
-  end
-
-  def stop(name) do
-    GenServer.stop(atom_name(name))
-  end
-
-  @impl true
-  def init(%{name: name} = init_state) do
-    # Logger.debug("node #{inspect(name)} inited!")
-    {:ok, _pid} = ND_LinkLayer.start(name)
-    ND_LinkLayer.subscribe(name, {:gen, atom_name(name)}, :ll_deliver)
-
-    Process.send_after(self(), {:periodic_sync}, init_state.conf.sync_interval)
-
-    {:ok, init_state}
+    BaseNode.start(name, conf, __MODULE__)
   end
 
   def connect(name, other) do
-    :ok = GenServer.call(atom_name(name), {:connect, other})
+    BaseNode.connect(name, other)
   end
 
   def update(name, key, update) do
-    :ok = GenServer.cast(atom_name(name), {:update, key, update})
+    BaseNode.update(name, key, update)
   end
 
   defp store(deltas_map, buffer, crdts, %{bp?: bp?}) do
@@ -85,16 +67,10 @@ defmodule Node.ND_Node do
     end
   end
 
-  @impl true
-  def handle_call({:connect, other}, _from, %{name: name} = state) do
-    :ok = ND_LinkLayer.connect(name, other)
-    {:reply, :ok, state}
-  end
-
 
   @impl true
-  def handle_cast({:update, key, update}, state) do
-    Logger.debug("node #{inspect(state.name)} updating #{inspect(key)} with #{inspect(update)}")
+  def handle_update(state, key, update) do
+    # Logger.debug("node #{inspect(state.name)} updating #{inspect(key)} with #{inspect(update)}")
     {crdt_type, crdt} = get_crdt_info(key, state.crdts)
     delta = CRDT.downstream_effect(crdt_type, crdt, update)
     {new_crdts, new_buffer} =
@@ -103,13 +79,11 @@ defmodule Node.ND_Node do
       else
         store(%{key => delta}, state.buffer, state.crdts, state.conf)
       end
-    {:noreply, %{state | crdts: new_crdts, buffer: new_buffer}}
+    %{state | crdts: new_crdts, buffer: new_buffer}
   end
 
   @impl true
-  def handle_cast({:ll_deliver, {:remote_sync, remote_effects}}, state) do
-    # Logger.debug("node #{inspect(state.name)} received remote sync: #{inspect(remote_effects)}")
-
+  def handle_ll_deliver(state, {:remote_sync, remote_effects}) do
     affecting_effects =
       Enum.filter(remote_effects, fn {{_key_bin, crdt_type} = key, crdt_delta} ->
         local_crdt = Map.get(state.crdts, key, CRDT.new(crdt_type))
@@ -127,27 +101,15 @@ defmodule Node.ND_Node do
 
     {new_crdts, new_buffer} = store(affecting_effects, state.buffer, state.crdts, state.conf)
 
-
-    {:noreply, %{state | crdts: new_crdts, buffer: new_buffer}}
+    %{state | crdts: new_crdts, buffer: new_buffer}
   end
 
-
   @impl true
-  def handle_info({:periodic_sync}, state) do
-    # Logger.debug("node #{inspect(state.name)} syncing with buffer: #{inspect(state.buffer)}")
+  def handle_periodic_sync(state) do
+    # Logger.debug("node #{inspect(state.name)} syncing")
     ND_LinkLayer.propagate(state.name, {:remote_sync, state.buffer}, bp?: state.conf.bp?)
-
-    Process.send_after(self(), {:periodic_sync}, state.conf.sync_interval)
-    {:noreply, %{state | buffer: MapSet.new()}}
+    %{state | buffer: MapSet.new()}
   end
-
-  @impl true
-  def handle_info(msg, %{name: name} = state) do
-    Logger.warning("Unhandled info msg to #{inspect(name)}: #{inspect(msg)}")
-    {:noreply, state}
-  end
-
-
 
   defp get_crdt_info({_key_bin, crdt_type} = key, crdts) do
     crdt = Map.get(crdts, key, CRDT.new(crdt_type))

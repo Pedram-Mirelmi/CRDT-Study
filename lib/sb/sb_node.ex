@@ -1,11 +1,11 @@
 defmodule Node.SB_Node do
   alias LinkLayer.SB_LinkLayer
   alias Crdts.CRDT
-  use GenServer
+  @behaviour BaseNode
   require Logger
 
 
-
+  
   def atom_name(node_name) do
     node_name |> String.to_atom()
   end

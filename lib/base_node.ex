@@ -1,8 +1,13 @@
 defmodule BaseNode do
-  alias Node.SB_Node
   use GenServer
   require Logger
 
+  @callback initial_state(binary(), map()) :: map()
+  @callback ll_module() :: module()
+  @callback handle_update(map(), tuple(), tuple()) :: map()
+  @callback handle_ll_deliver(map(), tuple()) :: map()
+  @callback handle_periodic_sync(map()) :: map()
+  @callback get_state(binary()) :: map()
 
   def atom_name(node_name) do
     node_name |> String.to_atom()
@@ -58,6 +63,10 @@ defmodule BaseNode do
     :ok = GenServer.cast(atom_name(name), {:update, key, update})
   end
 
+  def get_state(name) do
+    GenServer.call(atom_name(name), :get_state)
+  end
+
   @impl true
   def handle_call({:connect, other}, _from, %{name: name} = state) do
     :ok = state.module.ll_module.connect(name, other)
@@ -69,11 +78,9 @@ defmodule BaseNode do
     {:reply, state, state}
   end
 
-
   @impl true
   def handle_cast({:update, key, update}, state) do
     new_state = state.module.handle_update(state, key, update)
-
     {:noreply, new_state}
   end
 
