@@ -1,7 +1,7 @@
 defmodule StudyCases.StateBased do
-alias Topology.PartialMesh
-alias Topologies.BinTree
-alias Node.SB_Node
+  alias Topology.PartialMesh
+  alias Topologies.BinTree
+  alias Node.SB_Node
 
   def start(n, conn_degree, %{topology: :partial_mesh}, conf) do
     PartialMesh.new(

@@ -4,13 +4,17 @@ defmodule Node.SB_Node do
   use GenServer
   require Logger
 
+
+
   def atom_name(node_name) do
     node_name |> String.to_atom()
   end
 
-  defp initial_state(name, conf) do
+  def ll_module() do
+    SB_LinkLayer
+  end
 
-
+  def initial_state(name, conf) do
     %{
       conf: conf,
       crdts: %{},
@@ -20,63 +24,30 @@ defmodule Node.SB_Node do
   end
 
   def start_link(name, conf) do
-    GenServer.start_link(
-      __MODULE__,
-      initial_state(name, conf),
-      name: atom_name(name)
-    )
+    BaseNode.start_link(name, conf, __MODULE__)
   end
 
   def start(name, conf) do
-    GenServer.start(
-      __MODULE__,
-      initial_state(name, conf),
-      name: atom_name(name)
-    )
-  end
-
-  def stop(name) do
-    GenServer.stop(atom_name(name))
-  end
-
-  @impl true
-  def init(%{name: name} = init_state) do
-    # Logger.debug("node #{inspect(name)} inited!")
-    {:ok, _pid} = SB_LinkLayer.start(name)
-    SB_LinkLayer.subscribe(name, {:gen, atom_name(name)}, :ll_deliver)
-
-    Process.send_after(self(), {:periodic_sync}, init_state.conf.sync_interval)
-
-    {:ok, init_state}
+    BaseNode.start(name, conf, __MODULE__)
   end
 
   def connect(name, other) do
-    :ok = GenServer.call(atom_name(name), {:connect, other})
+    BaseNode.connect(name, other)
   end
 
   def update(name, key, update) do
-    :ok = GenServer.cast(atom_name(name), {:update, key, update})
+    BaseNode.update(name, key, update)
   end
 
-  @impl true
-  def handle_call({:connect, other}, _from, %{name: name} = state) do
-    :ok = SB_LinkLayer.connect(name, other)
-    {:reply, :ok, state}
-  end
-
-
-
-  @impl true
-  def handle_cast({:update, {_key_bin, crdt_type} = key, update}, %{crdts: crdts, updated_crdts: updated_crdts} = state) do
+  def handle_update(%{crdts: crdts, updated_crdts: updated_crdts} = state, {_key_bin, crdt_type} = key, update) do
     crdt = Map.get(crdts, key, crdt_type.new())
     effect = CRDT.downstream_effect(crdt_type, crdt, update)
     new_crdt = CRDT.affect(crdt_type, crdt, effect)
     new_updated_crdts = MapSet.put(updated_crdts, key)
-    {:noreply, %{state | crdts: Map.put(crdts, key, new_crdt), updated_crdts: new_updated_crdts}}
+    %{state | crdts: Map.put(crdts, key, new_crdt), updated_crdts: new_updated_crdts}
   end
 
-  @impl true
-  def handle_cast({:ll_deliver, {:remote_sync, remote_effects}}, %{crdts: crdts, updated_crdts: updated_crdts} = state) do
+  def handle_ll_deliver(%{crdts: crdts, updated_crdts: updated_crdts} = state, {:remote_sync, remote_effects}) do
     # Logger.debug("node #{inspect(state.name)} received remote sync: #{inspect(remote_effects)}")
     new_crdts = Map.merge(crdts, remote_effects, fn key, local_v, remote_v ->
       {_key_bin, crdt_type} = key
@@ -92,13 +63,10 @@ defmodule Node.SB_Node do
         MapSet.put(acc, key)
       end)
 
-
-    {:noreply, %{state | crdts: new_crdts, updated_crdts: new_updated_crdts}}
+    %{state | crdts: new_crdts, updated_crdts: new_updated_crdts}
   end
 
-
-  @impl true
-  def handle_info({:periodic_sync}, %{conf: conf, crdts: crdts, updated_crdts: updated_crdts, name: name} = state) do
+  def handle_periodic_sync(%{conf: conf, crdts: crdts, name: name, updated_crdts: updated_crdts} = state) do
     # Logger.debug("node #{inspect(name)} syncing")
     if conf.sync_method == :full do
       SB_LinkLayer.propagate(name, {:remote_sync, crdts})
@@ -108,14 +76,8 @@ defmodule Node.SB_Node do
         SB_LinkLayer.propagate(name, {:remote_sync, to_send})
       end
     end
-    Process.send_after(self(), {:periodic_sync}, conf.sync_interval)
-    {:noreply, %{state | updated_crdts: MapSet.new()}}
-  end
 
-  @impl true
-  def handle_info(msg, %{name: name} = state) do
-    Logger.warning("Unhandled info msg to #{inspect(name)}: #{inspect(msg)}")
-    {:noreply, state}
+    %{state | updated_crdts: MapSet.new()}
   end
 
 end
