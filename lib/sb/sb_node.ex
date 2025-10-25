@@ -42,7 +42,7 @@ defmodule Node.SB_Node do
   @impl true
   def init(%{name: name} = init_state) do
     # Logger.debug("node #{inspect(name)} inited!")
-    {:ok, _pid} = SB_LinkLayer.start_link(name)
+    {:ok, _pid} = SB_LinkLayer.start(name)
     SB_LinkLayer.subscribe(name, {:gen, atom_name(name)}, :ll_deliver)
 
     Process.send_after(self(), {:sync}, init_state.conf.sync_interval)

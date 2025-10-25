@@ -11,7 +11,8 @@ defmodule LinkLayer.ND_LinkLayer do
     %{
       neighbours: MapSet.new(),
       sub_handler: SubHandler.new(),
-      name: name
+      name: name,
+      init_wall_clock_time: :erlang.statistics(:wall_clock) |> elem(0)
     }
   end
 
@@ -78,7 +79,6 @@ defmodule LinkLayer.ND_LinkLayer do
     GenServer.cast(atom_name(name), {:propagate, msg, bp?})
   end
 
-  @spec subscribe(binary(), SubHandler.subscription(), SubHandler.topic()) :: :ok
   def subscribe(name, subscription, topic) do
     GenServer.cast(atom_name(name), {:subscribe, subscription, topic})
   end
@@ -96,7 +96,7 @@ defmodule LinkLayer.ND_LinkLayer do
             Map.put(acc, key, to_send_array)
           end)
 
-        CrdtAnalyzer.record_outgoing_traffic(state.name, {:remote_sync, to_send})
+        CrdtAnalyzer.record_outgoing_traffic(state.name, :erlang.external_size({:remote_sync, to_send}), state.init_wall_clock_time)
         deliver(neighbour, {:remote_sync, to_send})
       end)
     else
@@ -132,6 +132,10 @@ defmodule LinkLayer.ND_LinkLayer do
   def handle_info(msg, state) do
     Logger.warning("Unhandled info msg to #{inspect(state.name)}: #{inspect(msg)}")
     {:noreply, state}
+  end
+
+  defp record_traffic(state, traffic_type, msg) do
+    now = state.init_wall_clock_time - :erlang.statistics(:wall_clock) |> elem(0)
   end
 
 end

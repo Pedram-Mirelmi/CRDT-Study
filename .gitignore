@@ -21,3 +21,5 @@ crdt_comparison-*.tar
 
 # Temporary files, for example, from tests.
 /tmp/
+
+/lib/temp/

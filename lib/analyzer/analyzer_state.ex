@@ -1,25 +1,24 @@
 defmodule Analyzer.AnalyzerState do
+  require Logger
   alias Analyzer.AnalyzerState
-  defstruct init_time: nil,
-    outgoing_traffic: %{}, # node => [{time_stamp, msg_size_in_bytes}]
-    incoming_traffic: %{}
+  defstruct outgoing_traffic: %{}, # node => [{time_stamp, msg_size_in_bytes}]
+    incoming_traffic: %{} # same
 
 
   def new() do
-    %AnalyzerState{init_time: :os.system_time(:millisecond)}
+    %AnalyzerState{}
   end
 
-  def save_incomming(%AnalyzerState{} = this, node_name, msg) do
-    msg_size = msg |> :erlang.term_to_binary() |> byte_size()
-    entry = {:os.system_time(:millisecond) - this.init_time, msg_size}
-    updated_map = Map.update(this.incoming_traffic, node_name, [entry], &([entry | &1]))
-    %{this | incoming_traffic: updated_map}
-  end
-
-  def save_outgoing(%AnalyzerState{} = this, node_name, msg) do
-    msg_size = msg |> :erlang.term_to_binary() |> byte_size()
-    entry = {:os.system_time(:millisecond) - this.init_time, msg_size}
-    updated_map = Map.update(this.outgoing_traffic, node_name, [entry], &([entry | &1]))
-    %{this | outgoing_traffic: updated_map}
+  def save_traffic(this, replica_name, replica_time_stamp, msg_size, traffic_type) do
+    entry = {replica_time_stamp, msg_size}
+    case traffic_type do
+      :in ->
+        %{this | incoming_traffic: Map.update(this.incoming_traffic, replica_name, [entry], &([entry | &1]))}
+      :out ->
+        %{this | outgoing_traffic: Map.update(this.outgoing_traffic, replica_name, [entry], &([entry | &1]))}
+      other ->
+        Logger.warning("unknown traffic type: #{inspect(traffic_type)}: #{inspect(other)}")
+        this
+    end
   end
 end

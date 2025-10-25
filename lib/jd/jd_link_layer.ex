@@ -12,7 +12,8 @@ defmodule JD.JD_LinkLayer do
     %{
       neighbours: MapSet.new(),
       sub_handler: SubHandler.new(),
-      name: name
+      name: name,
+      init_wall_clock_time: :erlang.statistics(:wall_clock)
     }
   end
 
@@ -64,12 +65,6 @@ defmodule JD.JD_LinkLayer do
 
 
   @impl true
-  def handle_call(request, _from, %{name: name} = state) do
-    Logger.warning("Unhandled call request to #{inspect(name)}: #{inspect(request)}")
-    {:noreply, state}
-  end
-
-  @impl true
   def handle_call(request, from, state) do
     Logger.warning("Unhandled call request to #{inspect(state.name)}: #{inspect(request)} from #{inspect(from)}")
     {:reply, :ok, state}
@@ -79,7 +74,6 @@ defmodule JD.JD_LinkLayer do
     GenServer.cast(atom_name(name), {:propagate, msg, bp?})
   end
 
-  @spec subscribe(binary(), SubHandler.subscription(), SubHandler.topic()) :: :ok
   def subscribe(name, subscription, topic) do
     GenServer.cast(atom_name(name), {:subscribe, subscription, topic})
   end

@@ -11,7 +11,8 @@ defmodule BD.BD_LinkLayer do
     %{
       neighbours: MapSet.new(),
       sub_handler: SubHandler.new(),
-      name: name
+      name: name,
+      init_wall_clock_time: :erlang.statistics(:wall_clock)
     }
   end
 
