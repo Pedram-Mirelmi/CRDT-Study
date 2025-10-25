@@ -23,17 +23,6 @@ defmodule CrdtAnalyzer do
   def init(init_arg) do
     {:ok, init_arg}
   end
-
-
-  def record_outgoing_traffic(node_name, traffic_size, process_wall_clock_time) do
-    GenServer.cast(:analyzer, {:save_outgoing_traffic, node_name, traffic_size, process_wall_clock_time})
-  end
-
-
-  def record_incomming_traffic(node_name, traffic_size, process_wall_clock_time) do
-    GenServer.cast(:analyzer, {:save_incomming_traffic, node_name, traffic_size, process_wall_clock_time})
-  end
-
   def record_network_traffic(replica_name, replica_time_stamp, msg, traffic_type) do
     msg_size = :erlang.external_size(msg)
     GenServer.cast(:analyzer, {:save_traffic, replica_name, replica_time_stamp, msg_size, traffic_type})
