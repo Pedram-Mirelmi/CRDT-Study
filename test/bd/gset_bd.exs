@@ -24,7 +24,7 @@ defmodule BD.GSet_BD do
 
     :timer.sleep(2000)
 
-    states = TestUtility.get_nodes_states(@n_nodes, BD_Node)
+    states = TestUtility.get_nodes_crdts(@n_nodes, BD_Node)
     IO.inspect(states)
 
     CrdtAnalyzer.get_state() |> IO.inspect()
@@ -34,8 +34,8 @@ defmodule BD.GSet_BD do
 
   def conf() do
     %{
-      sync_interval: @sync_interval,
-      sync_method: @sync_method
+      sync_interval: Application.get_env(:crdt_comparison, :sync_interval, @sync_interval),
+      bd_sync_method: Application.get_env(:crdt_comparison, :bd_sync_method, @sync_method)
     }
   end
 end

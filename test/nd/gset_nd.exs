@@ -1,6 +1,6 @@
 defmodule ND.GSet_ND do
   alias StudyCases.NaiveDelta
-  alias Node.ND_Node
+  alias ND.ND_Node
   alias Crdts.Set_GO_ND
   alias Utils.TestUtility
   alias Topologies.BinTree
@@ -30,8 +30,8 @@ defmodule ND.GSet_ND do
 
   def conf() do
     %{
-      sync_interval: @sync_interval,
-      bp?: @bp?
+      sync_interval: Application.get_env(:crdt_comparison, :sync_interval, @sync_interval),
+      bp?: Application.get_env(:crdt_comparison, :bp?, @bp?)
     }
   end
 end

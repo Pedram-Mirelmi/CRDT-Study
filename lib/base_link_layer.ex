@@ -1,4 +1,5 @@
 defmodule BaseLinkLayer do
+  alias Analyzer.CrdtAnalyzer
   alias Utility.SubHandler
   require Logger
   use GenServer
@@ -40,9 +41,17 @@ defmodule BaseLinkLayer do
     )
   end
 
+  def stop(name) do
+    GenServer.stop(atom_name(name))
+  end
+
   @impl true
   def init(init_arg) do
     {:ok, init_arg}
+  end
+
+  def reset_init_wall_clock_time(name) do
+    GenServer.cast(atom_name(name), :reset_init_wall_clock_time)
   end
 
   def connect(node1, node2) do
@@ -86,6 +95,12 @@ defmodule BaseLinkLayer do
 
   def subscribe(name, subscription, topic) do
     GenServer.cast(atom_name(name), {:subscribe, subscription, topic})
+  end
+
+  @impl true
+  def handle_cast(:reset_init_wall_clock_time, state) do
+    new_state = %{state | init_wall_clock_time: :erlang.statistics(:wall_clock) |> elem(0)}
+    {:noreply, new_state}
   end
 
   @impl true

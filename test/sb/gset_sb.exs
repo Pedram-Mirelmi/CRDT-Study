@@ -1,5 +1,5 @@
 defmodule SB.GSet_SB do
-  alias Node.SB_Node
+  alias SB.SB_Node
   alias Crdts.Set_GO_SB
   alias Utils.TestUtility
   alias Topologies.BinTree
@@ -27,8 +27,8 @@ defmodule SB.GSet_SB do
 
   defp conf() do
     %{
-      sync_interval: @sync_interval,
-      sync_method: @sync_method # :full or :updates_only
+      sync_interval: Application.get_env(:crdt_comparison, :sync_interval, @sync_interval),
+      sb_sync_method: Application.get_env(:crdt_comparison, :sb_sync_method, @sync_method) # :full or :updates_only
     }
   end
 

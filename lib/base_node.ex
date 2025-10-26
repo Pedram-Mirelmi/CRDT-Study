@@ -42,6 +42,11 @@ defmodule BaseNode do
     )
   end
 
+  def stop(name) do
+    GenServer.stop(atom_name(name))
+    BaseLinkLayer.stop(name)
+  end
+
   @impl true
   def init(%{name: name, module: module} = init_state) do
     ll_module = module.ll_module()
@@ -55,6 +60,8 @@ defmodule BaseNode do
     {:ok, init_state}
   end
 
+
+
   def connect(name, other) do
     :ok = GenServer.call(atom_name(name), {:connect, other})
   end
@@ -63,8 +70,17 @@ defmodule BaseNode do
     :ok = GenServer.cast(atom_name(name), {:update, key, update})
   end
 
+  def reset_state(name, additional_state) do
+    GenServer.cast(atom_name(name), {:reset_state, additional_state})
+    BaseLinkLayer.reset_init_wall_clock_time(name)
+  end
+
   def get_state(name) do
     GenServer.call(atom_name(name), :get_state)
+  end
+
+  def sync_now(name) do
+    send(atom_name(name), :periodic_sync)
   end
 
   @impl true
@@ -76,6 +92,12 @@ defmodule BaseNode do
   @impl true
   def handle_call(:get_state, _from, state) do
     {:reply, state, state}
+  end
+
+  @impl true
+  def handle_cast({:reset_state, additional_state}, state) do
+    new_state = Map.merge(initial_state(state.name, state.conf, state.module), additional_state)
+    {:noreply, new_state}
   end
 
   @impl true

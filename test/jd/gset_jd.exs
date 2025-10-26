@@ -26,7 +26,7 @@ defmodule JD.GSet_JD do
 
     :timer.sleep(2000)
 
-    states = TestUtility.get_nodes_states(@n_nodes, JD_Node)
+    states = TestUtility.get_nodes_crdts(@n_nodes, JD_Node)
     IO.inspect(states)
 
     CrdtAnalyzer.get_state() |> IO.inspect()
@@ -36,8 +36,8 @@ defmodule JD.GSet_JD do
 
   def conf() do
     %{
-      sync_interval: @sync_interval,
-      bp?: @bp?
+      sync_interval: Application.get_env(:crdt_comparison, :sync_interval, @sync_interval),
+      bp?: Application.get_env(:crdt_comparison, :bp?, @bp?)
     }
   end
 end

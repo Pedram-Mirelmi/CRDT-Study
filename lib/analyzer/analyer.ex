@@ -1,4 +1,4 @@
-defmodule CrdtAnalyzer do
+defmodule Analyzer.CrdtAnalyzer do
   require Logger
   alias Analyzer.AnalyzerState
   use GenServer
@@ -32,11 +32,19 @@ defmodule CrdtAnalyzer do
     GenServer.call(:analyzer, :get_state)
   end
 
+  def reset() do
+    GenServer.cast(:analyzer, :reset)
+  end
 
   @impl true
   def handle_cast({:save_traffic, replica_name, replica_time_stamp, msg_size, traffic_type}, state) do
     new_state = AnalyzerState.save_traffic(state, replica_name, replica_time_stamp, msg_size, traffic_type)
     {:noreply, new_state}
+  end
+
+  @impl true
+  def handle_cast(:reset, _state) do
+    {:noreply, AnalyzerState.new()}
   end
 
   @impl true

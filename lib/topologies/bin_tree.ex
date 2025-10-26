@@ -3,21 +3,18 @@ defmodule Topologies.BinTree do
   alias Topologies.BinTree
   defstruct root: nil, left_tree: nil, right_tree: nil
 
-  def new(n, naming_from, start_node_fun, connect_fun) when n > 0 do
-    start_node_fun.("node#{naming_from}")
-    # {:ok, _root_pid} = SimNode.start_link("node#{naming_from}", %{})
-    {left_tree, left_n_nodes} = BinTree.new(Integer.floor_div(n-1, 2), naming_from + 1, start_node_fun, connect_fun)
-    {right_tree, right_n_nodes} = BinTree.new(n-1-left_n_nodes, naming_from + 1 + left_n_nodes, start_node_fun, connect_fun)
+  def new(n, naming_from, node_module, node_conf) when n > 0 do
+    BaseNode.start("node#{naming_from}", node_conf, node_module)
+    {left_tree, left_n_nodes} = BinTree.new(Integer.floor_div(n-1, 2), naming_from + 1, node_module, node_conf)
+    {right_tree, right_n_nodes} = BinTree.new(n-1-left_n_nodes, naming_from + 1 + left_n_nodes, node_module, node_conf)
 
     constructed_tree = %BinTree{root: "node#{naming_from}", left_tree: left_tree, right_tree: right_tree}
 
     if left_tree != nil do
-      connect_fun.(constructed_tree.root, left_tree.root)
-      # SimNode.connect(constructed_tree.root, left_tree.root)
+      BaseLinkLayer.connect(constructed_tree.root, left_tree.root)
     end
     if right_tree != nil do
-      connect_fun.(constructed_tree.root, right_tree.root)
-      # SimNode.connect(constructed_tree.root, right_tree.root)
+      BaseLinkLayer.connect(constructed_tree.root, right_tree.root)
     end
 
     {
