@@ -1,24 +1,33 @@
-defmodule Node.SB_Node do
+defmodule SB.SB_Node do
+  alias SB.DB
   alias LinkLayer.SB_LinkLayer
-  alias Crdts.CRDT
   @behaviour BaseNode
   require Logger
 
 
-  
+
   def atom_name(node_name) do
     node_name |> String.to_atom()
   end
 
+  @impl true
   def ll_module() do
     SB_LinkLayer
   end
 
+  def default_conf() do
+    %{
+      sync_interval: Application.get_env(:crdt_comparison, :sync_interval, 300),
+      bp?: Application.get_env(:crdt_comparison, :bp?, true),
+      sb_sync_method: Application.get_env(:crdt_comparison, :sb_sync_method, :updates_only)
+    }
+  end
+
+  @impl true
   def initial_state(name, conf) do
     %{
       conf: conf,
-      crdts: %{},
-      updated_crdts: MapSet.new(),
+      db: DB.new(),
       name: name
     }
   end
@@ -39,45 +48,39 @@ defmodule Node.SB_Node do
     BaseNode.update(name, key, update)
   end
 
-  def handle_update(%{crdts: crdts, updated_crdts: updated_crdts} = state, {_key_bin, crdt_type} = key, update) do
-    crdt = Map.get(crdts, key, crdt_type.new())
-    effect = CRDT.downstream_effect(crdt_type, crdt, update)
-    new_crdt = CRDT.affect(crdt_type, crdt, effect)
-    new_updated_crdts = MapSet.put(updated_crdts, key)
-    %{state | crdts: Map.put(crdts, key, new_crdt), updated_crdts: new_updated_crdts}
+  @impl true
+  def get_state(name) do
+    BaseNode.get_state(name)
   end
 
-  def handle_ll_deliver(%{crdts: crdts, updated_crdts: updated_crdts} = state, {:remote_sync, remote_effects}) do
+  @impl true
+  def handle_update(state, key, update) do
+    new_db = DB.apply_local_update(state.db, key, update)
+    %{state | db: new_db}
+  end
+
+  @impl true
+  def handle_ll_deliver(state, {:remote_sync, remote_effects}) do
     # Logger.debug("node #{inspect(state.name)} received remote sync: #{inspect(remote_effects)}")
-    new_crdts = Map.merge(crdts, remote_effects, fn key, local_v, remote_v ->
-      {_key_bin, crdt_type} = key
-      CRDT.affect(crdt_type, local_v, remote_v)
-    end)
-
-    new_updated_crdts = Enum.filter(remote_effects, fn {key, remote_effect} ->
-      {_key_bin, crdt_type} = key
-      local_crdt = Map.get(crdts, key, CRDT.new(crdt_type))
-      CRDT.causes_inflation?(crdt_type, local_crdt, remote_effect)
-    end) |>
-      Enum.reduce(updated_crdts, fn {key, _remote_effect}, acc ->
-        MapSet.put(acc, key)
-      end)
-
-    %{state | crdts: new_crdts, updated_crdts: new_updated_crdts}
+    new_db = DB.apply_remote_effects(state.db, remote_effects)
+    %{state | db: new_db}
   end
 
-  def handle_periodic_sync(%{conf: conf, crdts: crdts, name: name, updated_crdts: updated_crdts} = state) do
+  @impl true
+  def handle_periodic_sync(%{conf: conf, name: name, db: %DB{crdts: crdts, updated_crdts: updated_crdts} = db} = state) do
     # Logger.debug("node #{inspect(name)} syncing")
-    if conf.sync_method == :full do
-      SB_LinkLayer.propagate(name, {:remote_sync, crdts})
-    else
-      to_send = Map.take(crdts, updated_crdts |> Enum.to_list())
+    if conf.sb_sync_method == :updates_only do
+      to_send = Map.take(crdts, Enum.to_list(updated_crdts))
       if to_send != %{} do
         SB_LinkLayer.propagate(name, {:remote_sync, to_send})
       end
+    else
+      SB_LinkLayer.propagate(name, {:remote_sync, crdts})
     end
 
-    %{state | updated_crdts: MapSet.new()}
+    new_db = DB.clear_updated_crdts(db)
+
+    %{state | db: new_db}
   end
 
 end

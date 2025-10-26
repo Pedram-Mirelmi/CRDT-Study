@@ -30,23 +30,7 @@ defmodule Crdts.Set_GO_JD do
   def empty_state() do
     %{adds: MapSet.new()}
   end
-
-  @impl true
-  def valid_update?(internal_update) do
-    case internal_update do
-      {:add, [_term]} -> true
-      _other -> false
-    end
-  end
-
-  @impl true
-  def valid_effect?(internal_effect) do
-    case internal_effect do
-      %{adds: %MapSet{}} -> true
-      _ -> false
-    end
-  end
-
+  
   @impl true
   def affect(%Set_GO_JD{adds: adds}, %{adds: eff_adds}) do
     new_adds = MapSet.union(adds, eff_adds)

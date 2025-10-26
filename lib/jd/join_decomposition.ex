@@ -1,7 +1,7 @@
 defmodule Jd.JoinDecomposition do
   alias Topologies.BinTree
   alias JD.JD_Node
-  alias Topology.PartialMesh
+  alias Topologies.PartialMesh
 
 
   def start(n, conn_degree, %{topology: :partial_mesh}, conf) do

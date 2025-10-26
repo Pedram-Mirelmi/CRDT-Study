@@ -1,8 +1,6 @@
 defmodule Crdts.Set_GO_ND do
   alias Crdts.Set_GO_ND
-  defstruct adds: MapSet.new()
   @behaviour Crdts.CRDT
-
   @type set_element :: term()
   @type operation :: :add
   @type args :: [set_element()]
@@ -11,6 +9,13 @@ defmodule Crdts.Set_GO_ND do
   @type internal_effect :: %{adds: MapSet.t()}
 
   @type value() :: MapSet.t(set_element())
+
+
+
+
+  defstruct adds: MapSet.new()
+
+  
 
   @impl true
   def new() do
@@ -24,27 +29,11 @@ defmodule Crdts.Set_GO_ND do
 
   @impl true
   def downstream_effect(%Set_GO_ND{}, {:add, [element]}) do
-    %{adds: MapSet.new([element])}
+    %Set_GO_ND{adds: MapSet.new([element])}
   end
 
   def empty_state() do
-    %{adds: MapSet.new()}
-  end
-
-  @impl true
-  def valid_update?(internal_update) do
-    case internal_update do
-      {:add, [_term]} -> true
-      _other -> false
-    end
-  end
-
-  @impl true
-  def valid_effect?(internal_effect) do
-    case internal_effect do
-      %{adds: %MapSet{}} -> true
-      _ -> false
-    end
+    new()
   end
 
   @impl true

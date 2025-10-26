@@ -1,5 +1,5 @@
 defmodule JD.JD_LinkLayer do
-  alias JD.Buffer
+  alias JD.JD_Buffer
   require Logger
 
   def initial_state(_name) do

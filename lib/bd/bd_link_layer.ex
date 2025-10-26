@@ -21,17 +21,17 @@ defmodule BD.BD_LinkLayer do
     BaseLinkLayer.deliver(name, msg)
   end
 
-  def propagate(name, msg, bp?) do
-    BaseLinkLayer.propagate(name, msg, bp?)
+  def propagate(name, msg, conf) do
+    BaseLinkLayer.propagate(name, msg, conf)
   end
 
   def send_to_replica(from, to, msg, conf) do
-    
+
     BaseLinkLayer.send_to_replica(from, to, msg, conf)
   end
 
-  def handle_propagate(state, msg, sync_method) do
-    case sync_method do
+  def handle_propagate(state, msg, bd_sync_method) do
+    case bd_sync_method do
       :all ->
         Enum.each(state.neighbours, fn neighbour ->
           BaseLinkLayer.record_network_traffic(state, msg, :out)

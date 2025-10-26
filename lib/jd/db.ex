@@ -1,12 +1,12 @@
-defmodule JD.DB do
-  alias JD.Buffer
+defmodule JD.JD_DB do
+  alias JD.JD_DB
   alias Crdts.CRDT
   defstruct crdts: %{}
 
 
 
   def new() do
-    %JD.DB{}
+    %JD_DB{}
   end
 
   def get_crdt(db, {_key_bin, crdt_type} = key) do
@@ -16,9 +16,9 @@ defmodule JD.DB do
 
   def compute_delta(db, buffer, bp?) do
     if bp? do
-      compute_delta_if_bp_optimized(db, Buffer.get(buffer, true))
+      compute_delta_if_bp_optimized(db, buffer.crdts_deltas)
     else
-      compute_delta_if_regular(db, Buffer.get(buffer, false))
+      compute_delta_if_regular(db, buffer.crdts_deltas)
     end
   end
 
@@ -30,10 +30,10 @@ defmodule JD.DB do
         apply_deltas_if_regular(db, crdts_deltas)
       end
 
-    %JD.DB{db | crdts: new_crdts}
+    %JD_DB{db | crdts: new_crdts}
   end
 
-  defp compute_delta_if_bp_optimized(%JD.DB{crdts: crdts}, deltas_map) do
+  defp compute_delta_if_bp_optimized(%JD_DB{crdts: crdts}, deltas_map) do
     Enum.reduce(deltas_map, %{}, fn {{_key_bin, crdt_type} = key, origin_deltas_map}, acc_inflating_crdts_deltas ->
       local_crdt = Map.get(crdts, key, CRDT.new(crdt_type))
 
@@ -60,7 +60,7 @@ defmodule JD.DB do
     end)
   end
 
-  defp compute_delta_if_regular(%JD.DB{crdts: crdts}, deltas_map) do
+  defp compute_delta_if_regular(%JD_DB{crdts: crdts}, deltas_map) do
     Enum.reduce(deltas_map, %{}, fn {{_key_bin, crdt_type} = key, jd_set}, acc_strictly_inflating_crdts_deltas ->
       local_crdt = Map.get(crdts, key, CRDT.new(crdt_type))
 
@@ -78,7 +78,7 @@ defmodule JD.DB do
 
   end
 
-  defp apply_deltas_if_bp_optimized(%JD.DB{crdts: crdts}, crdts_deltas) do
+  defp apply_deltas_if_bp_optimized(%JD_DB{crdts: crdts}, crdts_deltas) do
     Enum.reduce(crdts_deltas, crdts, fn {{_key_bin, crdt_type} = key, crdt_delta_group}, acc_crdts ->
       local_crdt = Map.get(acc_crdts, key, CRDT.new(crdt_type))
 
@@ -92,7 +92,7 @@ defmodule JD.DB do
     end)
   end
 
-  defp apply_deltas_if_regular(%JD.DB{crdts: crdts}, crdts_deltas) do
+  defp apply_deltas_if_regular(%JD_DB{crdts: crdts}, crdts_deltas) do
     Enum.reduce(crdts_deltas, crdts, fn {{_key_bin, crdt_type} = key, delta_set}, acc_crdts ->
       local_crdt = Map.get(acc_crdts, key, CRDT.new(crdt_type))
       updated_crdt = Enum.reduce(delta_set, local_crdt, fn delta, acc_crdt ->

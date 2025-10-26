@@ -2,7 +2,7 @@ defmodule BD.BigDelta do
 
   alias Topologies.BinTree
   alias BD.BD_Node
-  alias Topology.PartialMesh
+  alias Topologies.PartialMesh
 
   def start(n, conn_degree, %{topology: :partial_mesh}, conf) do
     PartialMesh.new(

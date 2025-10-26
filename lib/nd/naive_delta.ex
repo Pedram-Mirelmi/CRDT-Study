@@ -1,7 +1,7 @@
 defmodule StudyCases.NaiveDelta do
   alias Topologies.BinTree
-  alias Node.ND_Node
-  alias Topology.PartialMesh
+  alias ND.ND_Node
+  alias Topologies.PartialMesh
   def start(n, conn_degree, %{topology: :partial_mesh}, conf) do
     PartialMesh.new(
       n,

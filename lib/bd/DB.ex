@@ -1,12 +1,12 @@
-defmodule BD.DB do
+defmodule BD.BD_DB do
   alias Utility.VectorClock
   alias Crdts.CRDT
-  alias BD.DB
+  alias BD.BD_DB
   defstruct crdts: %{}, replica_name: nil
 
 
   def new(replica_name) do
-    %DB{replica_name: replica_name}
+    %BD_DB{replica_name: replica_name}
   end
 
 
@@ -15,7 +15,7 @@ defmodule BD.DB do
     {crdt_type, crdt}
   end
 
-  def get_all_vcs(%DB{crdts: crdts}) do
+  def get_all_vcs(%BD_DB{crdts: crdts}) do
     Enum.reduce(crdts, %{}, fn {key, crdt}, acc_vcs ->
       Map.put(acc_vcs, key, crdt.vc)
     end)
@@ -26,7 +26,7 @@ defmodule BD.DB do
     {update_fun, update_args} = update
     effect = crdt_type.downstream_effect(local_crdt, {update_fun, update_args ++ [this.replica_name]})
     updated_crdt = crdt_type.affect(local_crdt, effect)
-    %DB{this | crdts: Map.put(this.crdts, key, updated_crdt)}
+    %BD_DB{this | crdts: Map.put(this.crdts, key, updated_crdt)}
   end
 
   def apply_deltas(this, crdts_deltas) do
@@ -36,7 +36,7 @@ defmodule BD.DB do
         updated_crdt = crdt_type.affect(local_crdt, crdt_delta)
         Map.put(acc_crdts, key, updated_crdt)
       end)
-    %DB{this | crdts: new_crdts}
+    %BD_DB{this | crdts: new_crdts}
   end
 
 
@@ -55,7 +55,7 @@ defmodule BD.DB do
   def get_strictly_older_crdt_vcs(this, crdts_vcs) do
     Enum.reduce(crdts_vcs, %{}, fn {key, crdt_vc}, acc_vcs ->
       {_crdt_type, local_crdt} = get_crdt(this, key)
-      if VectorClock.leq(crdt_vc, local_crdt.vc) do
+      if VectorClock.leq(local_crdt.vc, crdt_vc) do
         Map.put(acc_vcs, key, local_crdt.vc)
       else
         acc_vcs

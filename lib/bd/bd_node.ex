@@ -1,6 +1,6 @@
 defmodule BD.BD_Node do
-  # alias BD.DB
-  alias BD.DB
+  # alias BD.BD_DB
+  alias BD.BD_DB
   alias BD.BD_LinkLayer
   @behaviour BaseNode
   require Logger
@@ -10,11 +10,21 @@ defmodule BD.BD_Node do
     node_name |> String.to_atom()
   end
 
+  def default_conf() do
+    %{
+      sync_interval: Application.get_env(:crdt_comparison, :sync_interval, 300),
+      push_model1?: Application.get_env(:crdt_comparison, :bd_push_model1?, true),
+      push_model2?: Application.get_env(:crdt_comparison, :bd_push_model2?, false),
+      pull_model?: Application.get_env(:crdt_comparison, :bd_pull_model?, true),
+      bd_sync_method: Application.get_env(:crdt_comparison, :bd_sync_method, :all)
+    }
+  end
+
   @impl true
   def initial_state(name, conf) do
     %{
       conf: conf,
-      db: DB.new(name),
+      db: BD_DB.new(name),
       name: name
     }
   end
@@ -47,19 +57,27 @@ defmodule BD.BD_Node do
 
   @impl true
   def handle_update(state, key, update) do
-    # Logger.debug("node #{inspect(state.name)} updating #{inspect(key)} with #{inspect(update)}")
-    new_db = DB.apply_local_update(state.db, key, update)
+    Logger.debug("node #{inspect(state.name)} updating #{inspect(key)} with #{inspect(update)}")
+    new_db = BD_DB.apply_local_update(state.db, key, update)
+    if state.conf.push_model2? do
+      new_vc = new_db |> BD_DB.get_crdt(key) |> elem(1) |> Map.get(:vc)
+      BD_LinkLayer.propagate(state.name, {:remote_crdt_vcs, state.name, %{key => new_vc}}, state.conf.bd_sync_method)
+    end
     %{state | db: new_db}
   end
 
   @impl true
   def handle_ll_deliver(state, {:remote_crdt_vcs, remote_replica_name, remote_crdt_vcs}) do
-
-    two_replicas_delta = DB.compute_delta_from_crdt_vcs(state.db, remote_crdt_vcs)
+    Logger.debug("node #{inspect(state.name)} received remote_crdt_vcs: #{inspect(remote_crdt_vcs)} ")
+    two_replicas_delta = BD_DB.compute_delta_from_crdt_vcs(state.db, remote_crdt_vcs)
+    Logger.debug("node #{inspect(state.name)}: deltas: #{inspect(two_replicas_delta)}")
     if Kernel.map_size(two_replicas_delta) > 0 do
       # Logger.debug("from node #{inspect(state.name)} sending delta #{inspect(two_replicas_delta)} to replica #{inspect(remote_replica_name)}")
       BD_LinkLayer.send_to_replica(state.name, remote_replica_name, {:remote_deltas, two_replicas_delta}, nil)
-      strictly_older_crdt_vcs = DB.get_strictly_older_crdt_vcs(state.db, remote_crdt_vcs)
+    end
+
+    if state.conf.push_model1? do
+      strictly_older_crdt_vcs = BD_DB.get_strictly_older_crdt_vcs(state.db, remote_crdt_vcs)
       if Kernel.map_size(strictly_older_crdt_vcs) > 0 do
         BD_LinkLayer.send_to_replica(state.name, remote_replica_name, {:remote_crdt_vcs, state.name, strictly_older_crdt_vcs}, nil)
       end
@@ -70,15 +88,17 @@ defmodule BD.BD_Node do
 
   @impl true
   def handle_ll_deliver(state, {:remote_deltas, remote_deltas}) do
-    new_db = DB.apply_deltas(state.db, remote_deltas)
+    new_db = BD_DB.apply_deltas(state.db, remote_deltas)
 
     %{state | db: new_db}
   end
 
   @impl true
   def handle_periodic_sync(state) do
-    # Logger.debug("node #{inspect(state.name)} syncing with buffer: #{inspect(state.buffer)}")
-    BD_LinkLayer.propagate(state.name, {:remote_crdt_vcs, state.name, DB.get_all_vcs(state.db)}, state.conf.sync_method)
+    if state.conf.pull_model? do
+      Logger.debug("node #{inspect(state.name)} syncing")
+      BD_LinkLayer.propagate(state.name, {:remote_crdt_vcs, state.name, BD_DB.get_all_vcs(state.db)}, state.conf.bd_sync_method)
+    end
 
     state
   end

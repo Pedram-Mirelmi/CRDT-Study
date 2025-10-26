@@ -1,4 +1,6 @@
-defmodule Node.ND_Node do
+defmodule ND.ND_Node do
+  alias ND.ND_Buffer
+  alias ND.ND_DB
   alias LinkLayer.ND_LinkLayer
   alias Crdts.CRDT
   @behaviour BaseNode
@@ -13,15 +15,23 @@ defmodule Node.ND_Node do
     ND_LinkLayer
   end
 
+  def default_conf() do
+    %{
+      sync_interval: Application.get_env(:crdt_comparison, :sync_interval, 300),
+      bp?: Application.get_env(:crdt_comparison, :bp?, true)
+    }
+  end
+
   @impl true
   def initial_state(name, conf) do
     %{
       conf: conf,
-      crdts: %{},
-      buffer: %{},
+      db: ND_DB.new(),
+      buffer: ND_Buffer.new(),
       name: name
     }
   end
+
   def start_link(name, conf) do
     BaseNode.start_link(name, conf, __MODULE__)
   end
@@ -38,82 +48,41 @@ defmodule Node.ND_Node do
     BaseNode.update(name, key, update)
   end
 
-  defp store(deltas_map, buffer, crdts, %{bp?: bp?}) do
-    Logger.debug("Storing in node #{inspect(self())}: #{inspect(deltas_map)}")
-    if bp? do
-      Enum.reduce(deltas_map, {crdts, buffer}, fn {{_key_bin, crdt_type} = key, delta_array}, {acc_crdts, acc_buffer} ->
-        local_crdt = Map.get(acc_crdts, key, CRDT.new(crdt_type))
-        updated_crdt = Enum.reduce(delta_array, local_crdt, fn {delta, _origin}, acc_crdt ->
-          crdt_type.merge_state(acc_crdt, delta)
-        end)
-        new_crdts = Map.put(acc_crdts, key, updated_crdt)
-        ##########
-        local_delta_array = Map.get(acc_buffer, key, [])
-        new_buffer = Map.put(acc_buffer, key, delta_array ++ local_delta_array)
-        Logger.debug("Storing in node #{inspect(self())} in buffer for #{inspect(key)}: #{inspect(new_buffer)}")
-        {new_crdts, new_buffer}
-      end)
-    else
-      Enum.reduce(deltas_map, {crdts, buffer}, fn {{_key_bin, crdt_type} = key, delta}, {acc_crdts, acc_buffer} ->
-        local_crdt = Map.get(acc_crdts, key, CRDT.new(crdt_type))
-        updated_crdt = crdt_type.merge_state(local_crdt, delta)
-        new_crdts = Map.put(acc_crdts, key, updated_crdt)
-        ##########
-        local_delta = Map.get(acc_buffer, key, crdt_type.empty_state())
-        new_buffer = Map.put(acc_buffer, key, crdt_type.merge_deltas(local_delta, delta))
+  @impl true
+  def get_state(name) do
+    BaseNode.get_state(name)
+  end
 
-        {new_crdts, new_buffer}
-      end)
-    end
+  defp store(state, remote_buffer) do
+    {new_db, effective_deltas_in_buffer} = ND_DB.apply_deltas(state.db, remote_buffer, state.conf.bp?)
+    new_buffer = ND_Buffer.store_effective_remote_deltas(state.buffer, effective_deltas_in_buffer, state.conf.bp?)
+
+    %{state | db: new_db, buffer: new_buffer}
   end
 
 
   @impl true
   def handle_update(state, key, update) do
-    # Logger.debug("node #{inspect(state.name)} updating #{inspect(key)} with #{inspect(update)}")
-    {crdt_type, crdt} = get_crdt_info(key, state.crdts)
+    Logger.debug("node #{inspect(state.name)} updating #{inspect(key)} with #{inspect(update)}")
+    {crdt_type, crdt} = ND_DB.get_crdt(state.db, key)
     delta = CRDT.downstream_effect(crdt_type, crdt, update)
-    {new_crdts, new_buffer} =
-      if state.conf.bp? do
-        store(%{key => [{delta, state.name}]}, state.buffer, state.crdts, state.conf)
-      else
-        store(%{key => delta}, state.buffer, state.crdts, state.conf)
-      end
-    %{state | crdts: new_crdts, buffer: new_buffer}
+    if state.conf.bp? do
+      store(state, %ND_Buffer{crdts_deltas: %{key => %{state.name => delta}}})
+    else
+      store(state, %ND_Buffer{crdts_deltas: %{key => delta}})
+    end
   end
 
   @impl true
   def handle_ll_deliver(state, {:remote_sync, remote_effects}) do
-    affecting_effects =
-      Enum.filter(remote_effects, fn {{_key_bin, crdt_type} = key, crdt_delta} ->
-        local_crdt = Map.get(state.crdts, key, CRDT.new(crdt_type))
-
-        if state.conf.bp? do
-          Enum.any?(crdt_delta, fn {delta, _origin} ->
-            CRDT.causes_inflation?(crdt_type, local_crdt, delta)
-          end)
-        else
-          CRDT.causes_inflation?(crdt_type, local_crdt, crdt_delta)
-        end
-
-      end) |>
-        Enum.into(%{})
-
-    {new_crdts, new_buffer} = store(affecting_effects, state.buffer, state.crdts, state.conf)
-
-    %{state | crdts: new_crdts, buffer: new_buffer}
+    store(state, remote_effects)
   end
 
   @impl true
   def handle_periodic_sync(state) do
     # Logger.debug("node #{inspect(state.name)} syncing")
     ND_LinkLayer.propagate(state.name, {:remote_sync, state.buffer}, bp?: state.conf.bp?)
-    %{state | buffer: MapSet.new()}
-  end
-
-  defp get_crdt_info({_key_bin, crdt_type} = key, crdts) do
-    crdt = Map.get(crdts, key, CRDT.new(crdt_type))
-    {crdt_type, crdt}
+    %{state | buffer: %ND_Buffer{}}
   end
 
 end

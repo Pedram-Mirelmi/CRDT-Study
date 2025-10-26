@@ -1,8 +1,8 @@
 defmodule JD.JD_Node do
-  alias JD.DB
+  alias JD.JD_DB
   alias JD.JD_LinkLayer
   alias Crdts.CRDT
-  alias JD.Buffer
+  alias JD.JD_Buffer
   @behaviour BaseNode
   require Logger
 
@@ -15,12 +15,19 @@ defmodule JD.JD_Node do
     JD_LinkLayer
   end
 
+  def default_conf() do
+    %{
+      sync_interval: Application.get_env(:crdt_comparison, :sync_interval, 300),
+      bp?: Application.get_env(:crdt_comparison, :bp?, true)
+    }
+  end
+
   @impl true
   def initial_state(name, conf) do
     %{
       conf: conf,
-      buffer: Buffer.new(),
-      db: DB.new(),
+      buffer: JD_Buffer.new(),
+      db: JD_DB.new(),
       name: name
     }
   end
@@ -48,7 +55,7 @@ defmodule JD.JD_Node do
 
   defp store(state, buffer) do
     new_state = merge_state(state, buffer)
-    new_buffer = Buffer.merge_buffer(new_state.buffer, buffer, state.conf.bp?)
+    new_buffer = JD_Buffer.merge_buffer(new_state.buffer, buffer, state.conf.bp?)
 
     %{new_state | buffer: new_buffer}
   end
@@ -56,13 +63,13 @@ defmodule JD.JD_Node do
   @impl true
   def handle_update(state, key, update) do
     Logger.debug("node #{inspect(state.name)} updating #{inspect(key)} with #{inspect(update)}")
-    {crdt_type, crdt} = DB.get_crdt(state.db, key)
+    {crdt_type, crdt} = JD_DB.get_crdt(state.db, key)
     delta = CRDT.downstream_effect(crdt_type, crdt, update)
     new_state =
       if state.conf.bp? do
-        store(state, %Buffer{bp_optimized_data: %{key => %{state.name => MapSet.new([delta])}}})
+        store(state, %JD_Buffer{crdts_deltas: %{key => %{state.name => MapSet.new([delta])}}})
       else
-        store(state, %Buffer{regular_data: %{key => MapSet.new([delta])}})
+        store(state, %JD_Buffer{crdts_deltas: %{key => MapSet.new([delta])}})
       end
 
     new_state
@@ -70,7 +77,7 @@ defmodule JD.JD_Node do
 
   @impl true
   def handle_ll_deliver(state, {:remote_sync, remote_buffer}) do
-    strictly_inflating_crdts_deltas = DB.compute_delta(state.db, remote_buffer, state.conf.bp?)
+    strictly_inflating_crdts_deltas = JD_DB.compute_delta(state.db, remote_buffer, state.conf.bp?)
 
     maybe_new_state =
       if strictly_inflating_crdts_deltas != %{} do
@@ -86,18 +93,15 @@ defmodule JD.JD_Node do
   @impl true
   def handle_periodic_sync(state) do
     # Logger.debug("node #{inspect(state.name)} syncing with buffer: #{inspect(state.buffer)}")
-    JD_LinkLayer.propagate(state.name, {:remote_sync, state.buffer}, state.conf.bp?)
+    if state.buffer.crdts_deltas != %{} do
+      JD_LinkLayer.propagate(state.name, {:remote_sync, state.buffer}, state.conf.bp?)
+    end
 
-    %{state | buffer: Buffer.new()}
+    %{state | buffer: JD_Buffer.new()}
   end
 
   defp merge_state(state, delta_buffer) do
-    new_db =
-      if state.conf.bp? do
-        DB.apply_deltas(state.db, delta_buffer.bp_optimized_data, state.conf.bp?)
-      else
-        DB.apply_deltas(state.db, delta_buffer.regular_data, state.conf.bp?)
-      end
+    new_db = JD_DB.apply_deltas(state.db, delta_buffer.crdts_deltas, state.conf.bp?)
     %{state | db: new_db}
   end
 
