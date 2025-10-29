@@ -44,6 +44,43 @@ defmodule Utility.VectorClock do
     end)
   end
 
+  def lt(%VectorClock{v: map1}, %VectorClock{v: map2}) do
+    Enum.reduce_while(map1, false, fn {k, v1}, acc ->
+      v2 = Map.get(map2, k, 0)
+      cond do
+        v1 > v2 ->
+          {:halt, false}
+        v1 < v2 ->
+          {:cont, true}
+        true ->
+          {:cont, acc}
+      end
+    end)
+  end
+
+  def geq(%VectorClock{v: map1}, %VectorClock{v: map2}) do
+    Enum.all?(map2, fn {k, v2} ->
+      v1 = Map.get(map1, k, 0)
+      v1 >= v2
+    end)
+  end
+
+  def gt(%VectorClock{v: map1}, %VectorClock{v: map2}) do
+    Enum.reduce_while(map2, false, fn {k, v2}, acc ->
+      v1 = Map.get(map1, k, 0)
+      cond do
+        v1 < v2 ->
+          {:halt, false}
+        v1 > v2 ->
+          {:cont, true}
+        true ->
+          {:cont, acc}
+      end
+    end)
+  end
+
+
+
   def merge(%VectorClock{v: map1}, %VectorClock{v: map2}) do
     %VectorClock{v: Map.merge(map1, map2, fn _k, v1, v2 -> max(v1, v2) end)}
   end

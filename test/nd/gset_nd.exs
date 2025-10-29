@@ -2,7 +2,7 @@ defmodule ND.GSet_ND do
   alias StudyCases.NaiveDelta
   alias ND.ND_Node
   alias Crdts.Set_GO_ND
-  alias Utils.TestUtility
+  alias Utils.SimulationUtility
   alias Topologies.BinTree
   alias StudyCases.StateBased
   use ExUnit.Case
@@ -19,7 +19,7 @@ defmodule ND.GSet_ND do
     {tree, n_nodes} = NaiveDelta.start(@n_nodes, %{topology: :tree}, conf())
 
 
-    TestUtility.trigger_set_add_update(@n_nodes, @set_objects, Set_GO_ND, @set_elements, ND_Node, @update_pause)
+    SimulationUtility.trigger_set_add_update(@n_nodes, @set_objects, Set_GO_ND, @set_elements, ND_Node, @update_pause)
 
     :timer.sleep(2000)
 

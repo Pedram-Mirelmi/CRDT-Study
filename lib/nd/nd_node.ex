@@ -63,7 +63,7 @@ defmodule ND.ND_Node do
 
   @impl true
   def handle_update(state, key, update) do
-    Logger.debug("node #{inspect(state.name)} updating #{inspect(key)} with #{inspect(update)}")
+    # Logger.debug("node #{inspect(state.name)} updating #{inspect(key)} with #{inspect(update)}")
     {crdt_type, crdt} = ND_DB.get_crdt(state.db, key)
     delta = CRDT.downstream_effect(crdt_type, crdt, update)
     if state.conf.bp? do
@@ -81,7 +81,9 @@ defmodule ND.ND_Node do
   @impl true
   def handle_periodic_sync(state) do
     # Logger.debug("node #{inspect(state.name)} syncing")
-    ND_LinkLayer.propagate(state.name, {:remote_sync, state.buffer}, bp?: state.conf.bp?)
+    if state.buffer.crdts_deltas != %{} do
+      ND_LinkLayer.propagate(state.name, {:remote_sync, state.buffer}, bp?: state.conf.bp?)
+    end
     %{state | buffer: %ND_Buffer{}}
   end
 

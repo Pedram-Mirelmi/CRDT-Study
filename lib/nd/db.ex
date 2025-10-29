@@ -48,7 +48,12 @@ defmodule ND.ND_DB do
 
   # not bp optimized
   defp update_single_crdt_with_delta(crdt_type, crdt, delta, false) do
-
+    if CRDT.causes_inflation?(crdt_type, crdt, delta) do
+      new_crdt = crdt_type.affect(crdt, delta)
+      {new_crdt, delta}
+    else
+      {crdt, crdt_type.empty_state()}
+    end
   end
 
 end

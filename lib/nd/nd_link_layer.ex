@@ -34,7 +34,7 @@ defmodule LinkLayer.ND_LinkLayer do
             single_crdt_bp_optimized = Map.delete(origin_delta_map, neighbour)
             Map.put(acc, key, single_crdt_bp_optimized)
           end)
-        Logger.debug("on node #{inspect(state.name)} bp_optimized_crdts_deltas: #{inspect(bp_optimized_crdts_deltas)} while deltas: #{inspect(crdts_deltas)}")
+        # Logger.debug("on node #{inspect(state.name)} bp_optimized_crdts_deltas: #{inspect(bp_optimized_crdts_deltas)} while deltas: #{inspect(crdts_deltas)}")
         BaseLinkLayer.record_network_traffic(state, {:remote_sync, bp_optimized_crdts_deltas}, :out)
         deliver(neighbour, {:remote_sync, %ND_Buffer{crdts_deltas: bp_optimized_crdts_deltas}})
       end)

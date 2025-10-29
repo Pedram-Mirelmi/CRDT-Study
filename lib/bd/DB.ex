@@ -1,4 +1,5 @@
 defmodule BD.BD_DB do
+  require Logger
   alias Utility.VectorClock
   alias Crdts.CRDT
   alias BD.BD_DB
@@ -45,6 +46,7 @@ defmodule BD.BD_DB do
       {_crdt_type, local_crdt} = get_crdt(this, key)
       delta = crdt_type.get_delta(local_crdt, crdt_vc)
       if Kernel.map_size(delta.elements) > 0 do
+        # Logger.warning("non-empty delta between me: #{inspect(local_crdt)} and vc: #{inspect(crdt_vc)}")
         Map.put(acc_deltas, key, delta)
       else
         acc_deltas
@@ -55,7 +57,7 @@ defmodule BD.BD_DB do
   def get_strictly_older_crdt_vcs(this, crdts_vcs) do
     Enum.reduce(crdts_vcs, %{}, fn {key, crdt_vc}, acc_vcs ->
       {_crdt_type, local_crdt} = get_crdt(this, key)
-      if VectorClock.leq(local_crdt.vc, crdt_vc) do
+      if VectorClock.lt(local_crdt.vc, crdt_vc) do
         Map.put(acc_vcs, key, local_crdt.vc)
       else
         acc_vcs

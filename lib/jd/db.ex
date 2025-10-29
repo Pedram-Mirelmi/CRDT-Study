@@ -14,11 +14,11 @@ defmodule JD.JD_DB do
     {crdt_type, crdt}
   end
 
-  def compute_delta(db, buffer, bp?) do
+  def compute_strictly_inflating_deltas(db, crdts_deltas, bp?) do
     if bp? do
-      compute_delta_if_bp_optimized(db, buffer.crdts_deltas)
+      compute_delta_if_bp_optimized(db, crdts_deltas)
     else
-      compute_delta_if_regular(db, buffer.crdts_deltas)
+      compute_delta_if_regular(db, crdts_deltas)
     end
   end
 

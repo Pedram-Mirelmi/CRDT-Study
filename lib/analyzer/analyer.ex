@@ -36,9 +36,22 @@ defmodule Analyzer.CrdtAnalyzer do
     GenServer.cast(:analyzer, :reset)
   end
 
+  def record_memory_usage(state, replica_time_stamp) do
+    name = state.name
+    db_size = :erlang.external_size(state.db)
+    total_state_size = :erlang.external_size(state)
+    GenServer.cast(:analyzer, {:save_memory_usage, name, replica_time_stamp, db_size, total_state_size})
+  end
+
   @impl true
   def handle_cast({:save_traffic, replica_name, replica_time_stamp, msg_size, traffic_type}, state) do
     new_state = AnalyzerState.save_traffic(state, replica_name, replica_time_stamp, msg_size, traffic_type)
+    {:noreply, new_state}
+  end
+
+  @impl true
+  def handle_cast({:save_memory_usage, replica_name, replica_time_stamp, db_size, total_state_size}, state) do
+    new_state = AnalyzerState.save_memory_usage(state, replica_name, replica_time_stamp, db_size, total_state_size)
     {:noreply, new_state}
   end
 

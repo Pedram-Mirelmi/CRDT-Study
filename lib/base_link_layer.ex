@@ -50,6 +50,10 @@ defmodule BaseLinkLayer do
     {:ok, init_arg}
   end
 
+  def get_state(name) do
+    GenServer.call(atom_name(name), :get_state)
+  end
+
   def reset_init_wall_clock_time(name) do
     GenServer.cast(atom_name(name), :reset_init_wall_clock_time)
   end
@@ -73,7 +77,12 @@ defmodule BaseLinkLayer do
     CrdtAnalyzer.record_network_traffic(state.name, replica_time_stamp, network_msg, traffic_type)
   end
 
-   @impl true
+  @impl true
+  def handle_call(:get_state, _from, state) do
+    {:reply, state, state}
+  end
+
+  @impl true
   def handle_call({:add_neighbour, neighbour}, _from, state) do
     {:reply, :ok, %{state | neighbours: MapSet.put(state.neighbours, neighbour)}}
   end

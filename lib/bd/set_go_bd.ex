@@ -1,4 +1,5 @@
 defmodule Crdts.Set_GO_BD do
+  require Logger
   alias Utility.VectorClock
   alias Crdts.Set_GO_BD
   @behaviour Crdts.CRDT
@@ -66,7 +67,7 @@ defmodule Crdts.Set_GO_BD do
     Enum.any?(eff_adds, fn {el, eff_vc} ->
       case Map.get(elements, el) do
         nil -> true
-        local_vc -> not VectorClock.leq(eff_vc, local_vc)
+        local_vc -> VectorClock.gt(eff_adds, local_vc)
       end
     end)
   end

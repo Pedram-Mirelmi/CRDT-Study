@@ -3,7 +3,7 @@ defmodule JD.GSet_JD do
   alias StudyCases.NaiveDelta
   alias JD.JD_Node
   alias Crdts.Set_GO_JD
-  alias Utils.TestUtility
+  alias Utils.SimulationUtility
   alias Topologies.BinTree
   alias StudyCases.StateBased
   use ExUnit.Case
@@ -22,11 +22,11 @@ defmodule JD.GSet_JD do
     {tree, n_nodes} = JoinDecomposition.start(@n_nodes, %{topology: :tree}, conf())
 
 
-    TestUtility.trigger_set_add_update(@n_nodes, @set_objects, Set_GO_JD, @set_elements, JD_Node, @update_pause)
+    SimulationUtility.trigger_set_add_update(@n_nodes, @set_objects, Set_GO_JD, @set_elements, JD_Node, @update_pause)
 
     :timer.sleep(2000)
 
-    states = TestUtility.get_nodes_crdts(@n_nodes, JD_Node)
+    states = SimulationUtility.get_nodes_crdts(@n_nodes, JD_Node)
     IO.inspect(states)
 
     CrdtAnalyzer.get_state() |> IO.inspect()

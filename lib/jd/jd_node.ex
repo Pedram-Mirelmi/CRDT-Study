@@ -18,7 +18,7 @@ defmodule JD.JD_Node do
   def default_conf() do
     %{
       sync_interval: Application.get_env(:crdt_comparison, :sync_interval, 300),
-      bp?: Application.get_env(:crdt_comparison, :bp?, true)
+      bp?: Application.get_env(:crdt_comparison, :jd_bp?, true)
     }
   end
 
@@ -54,15 +54,18 @@ defmodule JD.JD_Node do
   end
 
   defp store(state, buffer) do
-    new_state = merge_state(state, buffer)
-    new_buffer = JD_Buffer.merge_buffer(new_state.buffer, buffer, state.conf.bp?)
+    # merge state:
+    new_db = JD_DB.apply_deltas(state.db, buffer.crdts_deltas, state.conf.bp?)
 
-    %{new_state | buffer: new_buffer}
+    # store in self buffer:
+    new_buffer = JD_Buffer.merge_buffer(state.buffer, buffer, state.conf.bp?)
+
+    %{state | buffer: new_buffer, db: new_db}
   end
 
   @impl true
   def handle_update(state, key, update) do
-    Logger.debug("node #{inspect(state.name)} updating #{inspect(key)} with #{inspect(update)}")
+    # Logger.debug("node #{inspect(state.name)} updating #{inspect(key)} with #{inspect(update)}")
     {crdt_type, crdt} = JD_DB.get_crdt(state.db, key)
     delta = CRDT.downstream_effect(crdt_type, crdt, update)
     new_state =
@@ -77,11 +80,12 @@ defmodule JD.JD_Node do
 
   @impl true
   def handle_ll_deliver(state, {:remote_sync, remote_buffer}) do
-    strictly_inflating_crdts_deltas = JD_DB.compute_delta(state.db, remote_buffer, state.conf.bp?)
-
+    strictly_inflating_crdts_deltas = JD_DB.compute_strictly_inflating_deltas(state.db, remote_buffer.crdts_deltas, state.conf.bp?)
+    strictly_effective_remote_buffer = %JD_Buffer{crdts_deltas: strictly_inflating_crdts_deltas}
+    # Logger.debug("\nnode #{inspect(state.name)} received remote buffer: #{inspect(remote_buffer)}, strictly inflating deltas: #{inspect(strictly_inflating_crdts_deltas)}\nwhile self buffer: #{inspect(state.buffer)}")
     maybe_new_state =
       if strictly_inflating_crdts_deltas != %{} do
-        store(state, remote_buffer)
+        store(state, strictly_effective_remote_buffer)
       else
         state
       end
@@ -99,11 +103,5 @@ defmodule JD.JD_Node do
 
     %{state | buffer: JD_Buffer.new()}
   end
-
-  defp merge_state(state, delta_buffer) do
-    new_db = JD_DB.apply_deltas(state.db, delta_buffer.crdts_deltas, state.conf.bp?)
-    %{state | db: new_db}
-  end
-
 
 end

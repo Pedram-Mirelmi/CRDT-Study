@@ -1,4 +1,5 @@
 defmodule BaseNode do
+  alias Analyzer.CrdtAnalyzer
   use GenServer
   require Logger
 
@@ -16,7 +17,8 @@ defmodule BaseNode do
   defp base_initial_state(name, conf) do
     %{
       name: name,
-      conf: conf
+      conf: conf,
+      init_wall_clock_time: :erlang.statistics(:wall_clock) |> elem(0)
     }
   end
 
@@ -57,6 +59,8 @@ defmodule BaseNode do
 
     Process.send_after(self(), :periodic_sync, init_state.conf.sync_interval)
 
+    record_memory_usage(init_state)
+
     {:ok, init_state}
   end
 
@@ -70,22 +74,24 @@ defmodule BaseNode do
     :ok = GenServer.cast(atom_name(name), {:update, key, update})
   end
 
-  def reset_state(name, additional_state) do
-    GenServer.cast(atom_name(name), {:reset_state, additional_state})
-    BaseLinkLayer.reset_init_wall_clock_time(name)
-  end
-
   def get_state(name) do
     GenServer.call(atom_name(name), :get_state)
   end
 
+  def record_memory_usage(state) do
+    now_wall_clock_time = :erlang.statistics(:wall_clock) |> elem(0)
+    replica_time_stamp = now_wall_clock_time - state.init_wall_clock_time
+    CrdtAnalyzer.record_memory_usage(state, replica_time_stamp)
+  end
+
+  @spec sync_now(binary()) :: any()
   def sync_now(name) do
     send(atom_name(name), :periodic_sync)
   end
 
   @impl true
   def handle_call({:connect, other}, _from, %{name: name} = state) do
-    :ok = state.module.ll_module.connect(name, other)
+    :ok = state.module.ll_module().connect(name, other)
     {:reply, :ok, state}
   end
 
@@ -95,20 +101,16 @@ defmodule BaseNode do
   end
 
   @impl true
-  def handle_cast({:reset_state, additional_state}, state) do
-    new_state = Map.merge(initial_state(state.name, state.conf, state.module), additional_state)
-    {:noreply, new_state}
-  end
-
-  @impl true
   def handle_cast({:update, key, update}, state) do
     new_state = state.module.handle_update(state, key, update)
+    record_memory_usage(new_state)
     {:noreply, new_state}
   end
 
   @impl true
   def handle_cast({:ll_deliver, msg}, state) do
     new_state = state.module.handle_ll_deliver(state, msg)
+    record_memory_usage(new_state)
     {:noreply, new_state}
   end
 
@@ -116,6 +118,7 @@ defmodule BaseNode do
   @impl true
   def handle_info(:periodic_sync, state) do
     new_state = state.module.handle_periodic_sync(state)
+    record_memory_usage(new_state)
     Process.send_after(self(), :periodic_sync, state.conf.sync_interval)
     {:noreply, new_state}
   end

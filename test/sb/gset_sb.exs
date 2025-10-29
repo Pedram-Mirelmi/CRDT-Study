@@ -1,7 +1,7 @@
 defmodule SB.GSet_SB do
   alias SB.SB_Node
   alias Crdts.Set_GO_SB
-  alias Utils.TestUtility
+  alias Utils.SimulationUtility
   alias Topologies.BinTree
   alias StudyCases.StateBased
   use ExUnit.Case
@@ -18,7 +18,7 @@ defmodule SB.GSet_SB do
     {tree, n_nodes} = StateBased.start(@n_nodes, %{topology: :tree}, conf())
 
 
-    TestUtility.trigger_set_add_update(@n_nodes, @set_objects, Set_GO_SB, @set_elements, SB_Node, @update_pause)
+    SimulationUtility.trigger_set_add_update(@n_nodes, @set_objects, Set_GO_SB, @set_elements, SB_Node, @update_pause)
 
     :timer.sleep(2000)
 

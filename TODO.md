@@ -27,6 +27,8 @@
 
 
 
-
+## Misc
+- clean up crdt code
+- add other crdts
 
 

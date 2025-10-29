@@ -2,7 +2,7 @@ defmodule BD.GSet_BD do
   alias BD.BigDelta
   alias BD.BD_Node
   alias Crdts.Set_GO_BD
-  alias Utils.TestUtility
+  alias Utils.SimulationUtility
   alias Topologies.BinTree
   use ExUnit.Case
 
@@ -20,11 +20,11 @@ defmodule BD.GSet_BD do
     {tree, n_nodes} = BigDelta.start(@n_nodes, %{topology: :tree}, conf())
 
 
-    TestUtility.trigger_set_add_update(@n_nodes, @set_objects, Set_GO_BD, @set_elements, BD_Node, @update_pause)
+    SimulationUtility.trigger_set_add_update(@n_nodes, @set_objects, Set_GO_BD, @set_elements, BD_Node, @update_pause)
 
     :timer.sleep(2000)
 
-    states = TestUtility.get_nodes_crdts(@n_nodes, BD_Node)
+    states = SimulationUtility.get_nodes_crdts(@n_nodes, BD_Node)
     IO.inspect(states)
 
     CrdtAnalyzer.get_state() |> IO.inspect()

@@ -1,3 +1,5 @@
 %{
   "jason": {:hex, :jason, "1.4.4", "b9226785a9aa77b6857ca22832cffa5d5011a667207eb2a0ad56adb5db443b8a", [:mix], [{:decimal, "~> 1.0 or ~> 2.0", [hex: :decimal, repo: "hexpm", optional: true]}], "hexpm", "c5eb0cab91f094599f94d55bc63409236a8ec69a21a67814529e8d5f6cc90b3b"},
+  "randex": {:hex, :randex, "0.4.0", "f76712da3663dd7d4166e017829ec428dc67df9e11b82d923dfd6f9b4854b373", [:mix], [{:stream_data, "~> 0.4", [hex: :stream_data, repo: "hexpm", optional: true]}], "hexpm", "f803f256542bd264acea832a69f6e5fea3df4cd3f8a9f03588e5593f04c61095"},
+  "statistics": {:hex, :statistics, "0.6.3", "7fb182e7c1cab2980e392c7efef7ce326539f081f9defda4099550e9c2c7cb0f", [:mix], [], "hexpm", "a43d87726d240205e9ef47f29650a6e3132b4e4061e05512f32fa8120784a8e0"},
 }

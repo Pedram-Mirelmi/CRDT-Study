@@ -11,10 +11,10 @@ defmodule ND.ND_Buffer do
       Map.merge(local_crdt_buffer, remote_crdt_buffer, fn {_key_bin, crdt_type}, local_single_crdt_delta, remote_single_crdt_delta ->
         if bp? do # single_delta_delta : %{origin => single_crdt_origin_delta}
           Map.merge(local_single_crdt_delta, remote_single_crdt_delta, fn _origin, local_single_crdt_origin_delta, remote_single_crdt_origin_delta ->
-            crdt_type.merge_states(local_single_crdt_origin_delta, remote_single_crdt_origin_delta)
+            crdt_type.merge_state(local_single_crdt_origin_delta, remote_single_crdt_origin_delta)
           end)
         else # single_delta : simple crdt sub_state
-          crdt_type.merge_states(local_single_crdt_delta, remote_single_crdt_delta)
+          crdt_type.merge_state(local_single_crdt_delta, remote_single_crdt_delta)
         end
       end)
     %ND_Buffer{crdts_deltas: new_crdts_deltas}
