@@ -6,6 +6,8 @@ defmodule Utils.SimulationUtility do
   @long_text "Lorem ipsum dolor sit amet, consectetur "
   @short_text ""
 
+  @repititions 10
+
   def trigger_set_add_update(n_nodes, n_objects, object_type, n_elements_per_object, node_module, pause) do
     Process.spawn(fn ->
       for _i <- 0..(n_objects-1) do
@@ -33,11 +35,11 @@ defmodule Utils.SimulationUtility do
     conf_name,
     crdt_data_type,
     crdt_module,
-    sync_approach
+    manual_sync_approach
   ) do
     topology_setup_func.(node_module, node_conf)
 
-    Logger.debug("Starting simulation: Topology=#{topology_name}, Node=#{node_module |> Module.split() |> List.last()}, Conf=#{conf_name}, CRDT=#{crdt_module |> Module.split() |> List.last()}, sync_approach=#{sync_approach}")
+    Logger.debug("Starting simulation: Topology=#{topology_name}, Node=#{node_module |> Module.split() |> List.last()}, Conf=#{conf_name}, CRDT=#{crdt_module |> Module.split() |> List.last()}, sync_approach=#{manual_sync_approach}")
     key = {"key", crdt_module}
 
     for i <- 0..(@repititions*n_nodes-1) do
@@ -45,7 +47,7 @@ defmodule Utils.SimulationUtility do
       target_node_name = "node" <> Integer.to_string(target_node_index)
       update = sample_update(crdt_data_type, i)
       BaseNode.update(target_node_name, key, update)
-      if sync_approach != :also_immediately do
+      if manual_sync_approach != :also_immediately do
         BaseNode.sync_now(target_node_name)
       end
       :timer.sleep(20)
@@ -66,7 +68,7 @@ defmodule Utils.SimulationUtility do
 
     module_name = node_module |> Module.split() |> List.last()
     crdt_name = crdt_module |> Module.split() |> List.last()
-    file_name = "metrics/#{topology_name} | #{module_name} | #{conf_name} | #{Atom.to_string(sync_approach)} | #{crdt_data_type}-#{crdt_name}.json"
+    file_name = "metrics/#{topology_name} | #{module_name} | #{conf_name} | #{Atom.to_string(manual_sync_approach)} | #{crdt_data_type}-#{crdt_name}.json"
     save_metrices(file_name)
     CrdtAnalyzer.reset()
     # reset analyzer

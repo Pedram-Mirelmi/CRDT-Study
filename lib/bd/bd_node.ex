@@ -34,25 +34,9 @@ defmodule BD.BD_Node do
     BD_LinkLayer
   end
 
-  def start_link(name, conf) do
-    BaseNode.start_link(name, conf, __MODULE__)
-  end
-
-  def start(name, conf) do
-    BaseNode.start(name, conf, __MODULE__)
-  end
-
-  def connect(name, other) do
-    BaseNode.connect(name, other)
-  end
-
-  def update(name, key, update) do
-    BaseNode.update(name, key, update)
-  end
-
   @impl true
-  def get_state(name) do
-    BaseNode.get_state(name)
+  def handle_peer_full_sync(state, _other) do
+    handle_periodic_sync(state)
   end
 
   @impl true
@@ -62,7 +46,7 @@ defmodule BD.BD_Node do
     if state.conf.bd_push_model2? do
       # Logger.debug("#{inspect(state.name)} pushing vc for key #{inspect(key)}")
       new_vc = new_db |> BD_DB.get_crdt(key) |> elem(1) |> Map.get(:vc)
-      BD_LinkLayer.propagate(state.name, {:remote_crdt_vcs, state.name, %{key => new_vc}}, state.conf.bd_sync_method)
+      BaseLinkLayer.propagate(state.name, {:remote_crdt_vcs, state.name, %{key => new_vc}}, state.conf.bd_sync_method)
     end
     %{state | db: new_db}
   end
@@ -75,7 +59,7 @@ defmodule BD.BD_Node do
     if Kernel.map_size(two_replicas_delta) > 0 do
       # Logger.debug("#{inspect(state.name)} sending delta #{inspect(two_replicas_delta)} back to replica #{inspect(remote_replica_name)}")
       # Logger.error("sending to replica!")
-      BD_LinkLayer.send_to_replica(state.name, remote_replica_name, {:remote_deltas, two_replicas_delta}, nil)
+      BaseLinkLayer.send_to_replica(state.name, remote_replica_name, {:remote_deltas, two_replicas_delta})
     else
       # Logger.warning("no delta between the two replicas!!!!")
     end
@@ -85,7 +69,7 @@ defmodule BD.BD_Node do
       if Kernel.map_size(strictly_older_crdt_vcs) > 0 do
         # Logger.debug("#{inspect(state.name)} pushing strictly older vcs #{inspect(strictly_older_crdt_vcs)} to replica #{inspect(remote_replica_name)}")
         # Logger.error("sending to replica through push!!!")
-        BD_LinkLayer.send_to_replica(state.name, remote_replica_name, {:remote_crdt_vcs, state.name, strictly_older_crdt_vcs}, nil)
+        BaseLinkLayer.send_to_replica(state.name, remote_replica_name, {:remote_crdt_vcs, state.name, strictly_older_crdt_vcs})
       else
         # Logger.error("no strictly older crdt vcs to push!!!!")
       end
@@ -103,10 +87,10 @@ defmodule BD.BD_Node do
 
   @impl true
   def handle_periodic_sync(state) do
-    if state.conf.bd_pull_model? do
+    # if state.conf.bd_pull_model? do
       # Logger.debug("#{inspect(state.name)} pulling")
-      BD_LinkLayer.propagate(state.name, {:remote_crdt_vcs, state.name, BD_DB.get_all_vcs(state.db)}, state.conf.bd_sync_method)
-    end
+    BaseLinkLayer.propagate(state.name, {:remote_crdt_vcs, state.name, BD_DB.get_all_vcs(state.db)}, state.conf.bd_sync_method)
+    # end
 
     state
   end

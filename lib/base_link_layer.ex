@@ -63,8 +63,17 @@ defmodule BaseLinkLayer do
     :ok = add_neighbour(node2, node1)
   end
 
+  def disconnect(node1, node2) do
+    :ok = remove_neighbour(node1, node2)
+    :ok = remove_neighbour(node2, node1)
+  end
+
   defp add_neighbour(name, neighbour) do
     :ok = GenServer.call(atom_name(name), {:add_neighbour, neighbour})
+  end
+
+  defp remove_neighbour(name, neighbour) do
+    :ok = GenServer.call(atom_name(name), {:remove_neighbour, neighbour})
   end
 
   def deliver(name, msg) do
@@ -83,8 +92,16 @@ defmodule BaseLinkLayer do
   end
 
   @impl true
-  def handle_call({:add_neighbour, neighbour}, _from, state) do
+  def handle_call({:add_neighbour, neighbour}, _from, %{neighbours: neighbours} = state) do
+    if neighbours == [] do
+      BaseNode.do_peer_full_sync(state.name, neighbour)
+    end
     {:reply, :ok, %{state | neighbours: MapSet.put(state.neighbours, neighbour)}}
+  end
+
+  @impl true
+  def handle_call({:remove_neighbour, neighbour}, _from, %{neighbours: neighbours} = state) do
+    {:reply, :ok, %{state | neighbours: MapSet.delete(neighbours, neighbour)}}
   end
 
 
@@ -98,8 +115,8 @@ defmodule BaseLinkLayer do
     GenServer.cast(atom_name(name), {:propagate, msg, conf})
   end
 
-  def send_to_replica(from, to, msg, conf) do
-    GenServer.cast(atom_name(from), {:send_to_replica, to, msg, conf})
+  def send_to_replica(from, to, msg) do
+    GenServer.cast(atom_name(from), {:send_to_replica, to, msg})
   end
 
   def subscribe(name, subscription, topic) do

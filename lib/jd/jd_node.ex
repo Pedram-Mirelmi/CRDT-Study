@@ -6,10 +6,6 @@ defmodule JD.JD_Node do
   @behaviour BaseNode
   require Logger
 
-  def atom_name(node_name) do
-    node_name |> String.to_atom()
-  end
-
   @impl true
   def ll_module() do
     JD_LinkLayer
@@ -32,35 +28,10 @@ defmodule JD.JD_Node do
     }
   end
 
-  def start_link(name, conf) do
-    BaseNode.start_link(name, conf, __MODULE__)
-  end
-
-  def start(name, conf) do
-    BaseNode.start(name, conf, __MODULE__)
-  end
-
-  def connect(name, other) do
-    BaseNode.connect(name, other)
-  end
-
-  def update(name, key, update) do
-    BaseNode.update(name, key, update)
-  end
-
   @impl true
-  def get_state(name) do
-    BaseNode.get_state(name)
-  end
-
-  defp store(state, buffer) do
-    # merge state:
-    new_db = JD_DB.apply_deltas(state.db, buffer.crdts_deltas, state.conf.bp?)
-
-    # store in self buffer:
-    new_buffer = JD_Buffer.merge_buffer(state.buffer, buffer, state.conf.bp?)
-
-    %{state | buffer: new_buffer, db: new_db}
+  def handle_peer_full_sync(state, other) do
+    BaseLinkLayer.send_to_replica(state.name, other, {:full_sync_request, state.name})
+    state
   end
 
   @impl true
@@ -76,6 +47,16 @@ defmodule JD.JD_Node do
       end
 
     new_state
+  end
+
+  @impl true
+  def handle_ll_deliver(state, {:full_sync_request, requester_replica}) do
+    BaseLinkLayer.send_to_replica(state.name, requester_replica, {:full_sync_response, state.db})
+  end
+
+  @impl true
+  def handle_ll_deliver(state, {:full_sync_response, remote_db}) do
+    %{state | db: remote_db}
   end
 
   @impl true
@@ -98,10 +79,20 @@ defmodule JD.JD_Node do
   def handle_periodic_sync(state) do
     # Logger.debug("node #{inspect(state.name)} syncing with buffer: #{inspect(state.buffer)}")
     if state.buffer.crdts_deltas != %{} do
-      JD_LinkLayer.propagate(state.name, {:remote_sync, state.buffer}, state.conf.bp?)
+      BaseLinkLayer.propagate(state.name, {:remote_sync, state.buffer}, state.conf.bp?)
     end
 
     %{state | buffer: JD_Buffer.new()}
+  end
+
+  defp store(state, buffer) do
+    # merge state:
+    new_db = JD_DB.apply_deltas(state.db, buffer.crdts_deltas, state.conf.bp?)
+
+    # store in self buffer:
+    new_buffer = JD_Buffer.merge_buffer(state.buffer, buffer, state.conf.bp?)
+
+    %{state | buffer: new_buffer, db: new_db}
   end
 
 end

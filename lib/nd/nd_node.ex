@@ -6,9 +6,6 @@ defmodule ND.ND_Node do
   @behaviour BaseNode
   require Logger
 
-  def atom_name(node_name) do
-    node_name |> String.to_atom()
-  end
 
   @impl true
   def ll_module() do
@@ -32,32 +29,10 @@ defmodule ND.ND_Node do
     }
   end
 
-  def start_link(name, conf) do
-    BaseNode.start_link(name, conf, __MODULE__)
-  end
-
-  def start(name, conf) do
-    BaseNode.start(name, conf, __MODULE__)
-  end
-
-  def connect(name, other) do
-    BaseNode.connect(name, other)
-  end
-
-  def update(name, key, update) do
-    BaseNode.update(name, key, update)
-  end
-
   @impl true
-  def get_state(name) do
-    BaseNode.get_state(name)
-  end
-
-  defp store(state, remote_buffer) do
-    {new_db, effective_deltas_in_buffer} = ND_DB.apply_deltas(state.db, remote_buffer, state.conf.bp?)
-    new_buffer = ND_Buffer.store_effective_remote_deltas(state.buffer, effective_deltas_in_buffer, state.conf.bp?)
-
-    %{state | db: new_db, buffer: new_buffer}
+  def handle_peer_full_sync(state, other) do
+    BaseLinkLayer.send_to_replica(state.name, other, {:full_sync_request, state.name})
+    state
   end
 
 
@@ -73,6 +48,18 @@ defmodule ND.ND_Node do
     end
   end
 
+
+  @impl true
+  def handle_ll_deliver(state, {:full_sync_request, requester_replica}) do
+    BaseLinkLayer.send_to_replica(state.name, requester_replica, {:full_sync_response, state.db})
+  end
+
+  @impl true
+  def handle_ll_deliver(state, {:full_sync_response, remote_db}) do
+    %{state | db: remote_db}
+  end
+
+
   @impl true
   def handle_ll_deliver(state, {:remote_sync, remote_effects}) do
     store(state, remote_effects)
@@ -82,9 +69,17 @@ defmodule ND.ND_Node do
   def handle_periodic_sync(state) do
     # Logger.debug("node #{inspect(state.name)} syncing")
     if state.buffer.crdts_deltas != %{} do
-      ND_LinkLayer.propagate(state.name, {:remote_sync, state.buffer}, bp?: state.conf.bp?)
+      BaseLinkLayer.propagate(state.name, {:remote_sync, state.buffer}, state.conf.bp?)
     end
     %{state | buffer: %ND_Buffer{}}
   end
+
+  defp store(state, remote_buffer) do
+    {new_db, effective_deltas_in_buffer} = ND_DB.apply_deltas(state.db, remote_buffer, state.conf.bp?)
+    new_buffer = ND_Buffer.store_effective_remote_deltas(state.buffer, effective_deltas_in_buffer, state.conf.bp?)
+
+    %{state | db: new_db, buffer: new_buffer}
+  end
+
 
 end
