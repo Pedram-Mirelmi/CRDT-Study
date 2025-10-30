@@ -7,6 +7,14 @@ defmodule ND.ND_DB do
     %ND_DB{}
   end
 
+  def merge(%ND_DB{crdts: crdts1}, %ND_DB{crdts: crdts2}) do
+    new_crdts = Map.merge(crdts1, crdts2, fn key, v1, v2 ->
+      {_key_bin, crdt_type} = key
+      CRDT.affect(crdt_type, v1, v2)
+    end)
+    %ND_DB{crdts: new_crdts}
+  end
+
   def get_crdt(db, {_key_bin, crdt_type} = key) do
     crdt = Map.get(db.crdts, key, crdt_type.new())
     {crdt_type, crdt}

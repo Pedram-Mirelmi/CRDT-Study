@@ -36,6 +36,7 @@ defmodule BD.BD_Node do
 
   @impl true
   def handle_peer_full_sync(state, _other) do
+    # Logger.debug("node #{state.name} syncing...")
     handle_periodic_sync(state)
   end
 
@@ -59,7 +60,7 @@ defmodule BD.BD_Node do
     if Kernel.map_size(two_replicas_delta) > 0 do
       # Logger.debug("#{inspect(state.name)} sending delta #{inspect(two_replicas_delta)} back to replica #{inspect(remote_replica_name)}")
       # Logger.error("sending to replica!")
-      BaseLinkLayer.send_to_replica(state.name, remote_replica_name, {:remote_deltas, two_replicas_delta})
+      BaseLinkLayer.send_to_node(state.name, remote_replica_name, {:remote_deltas, two_replicas_delta})
     else
       # Logger.warning("no delta between the two replicas!!!!")
     end
@@ -69,7 +70,7 @@ defmodule BD.BD_Node do
       if Kernel.map_size(strictly_older_crdt_vcs) > 0 do
         # Logger.debug("#{inspect(state.name)} pushing strictly older vcs #{inspect(strictly_older_crdt_vcs)} to replica #{inspect(remote_replica_name)}")
         # Logger.error("sending to replica through push!!!")
-        BaseLinkLayer.send_to_replica(state.name, remote_replica_name, {:remote_crdt_vcs, state.name, strictly_older_crdt_vcs})
+        BaseLinkLayer.send_to_node(state.name, remote_replica_name, {:remote_crdt_vcs, state.name, strictly_older_crdt_vcs})
       else
         # Logger.error("no strictly older crdt vcs to push!!!!")
       end
@@ -80,6 +81,7 @@ defmodule BD.BD_Node do
 
   @impl true
   def handle_ll_deliver(state, {:remote_deltas, remote_deltas}) do
+    Logger.debug("#{state.name} getting delta: #{inspect(remote_deltas)}")
     new_db = BD_DB.apply_deltas(state.db, remote_deltas)
 
     %{state | db: new_db}

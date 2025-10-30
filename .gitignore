@@ -29,3 +29,6 @@ crdt_comparison-*.tar
 /lib/temp/
 
 /metrics/
+/metrics_debug/
+/dm_metrics_debug/
+/dm_metrics/

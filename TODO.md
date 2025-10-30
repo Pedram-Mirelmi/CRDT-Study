@@ -30,5 +30,12 @@
 ## Misc
 - clean up crdt code
 - add other crdts
+- add cpu usage
+- add cumultive
+- implement manual force sync until convergence for BD
+- for BD
+    - Add DM scenarios
+    - scale n_nodes
+
 
 

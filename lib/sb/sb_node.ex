@@ -1,5 +1,5 @@
 defmodule SB.SB_Node do
-  alias SB.DB
+  alias SB.SB_DB
   alias LinkLayer.SB_LinkLayer
   @behaviour BaseNode
   require Logger
@@ -20,42 +20,43 @@ defmodule SB.SB_Node do
   def initial_state(name, conf) do
     %{
       conf: conf,
-      db: DB.new(),
+      db: SB_DB.new(),
       name: name
     }
   end
 
   @impl true
   def handle_peer_full_sync(state, other) do
-    BaseLinkLayer.send_to_replica(state.name, other, {:full_sync_request, state.name})
+    BaseLinkLayer.send_to_node(state.name, other, {:full_sync_request, state.name, state.db})
     state
   end
 
   @impl true
   def handle_update(state, key, update) do
-    new_db = DB.apply_local_update(state.db, key, update)
+    new_db = SB_DB.apply_local_update(state.db, key, update)
     %{state | db: new_db}
   end
 
   @impl true
-  def handle_ll_deliver(state, {:full_sync_request, requester_replica}) do
-    BaseLinkLayer.send_to_replica(state.name, requester_replica, {:full_sync_response, state.db})
+  def handle_ll_deliver(state, {:full_sync_request, requester_replica, remote_db}) do
+    BaseLinkLayer.send_to_node(state.name, requester_replica, {:full_sync_response, state.db})
+    %{state | db: SB_DB.merge(state.db, remote_db)}
   end
 
   @impl true
   def handle_ll_deliver(state, {:full_sync_response, remote_db}) do
-    %{state | db: remote_db}
+    %{state | db: SB_DB.merge(state.db, remote_db)}
   end
 
   @impl true
   def handle_ll_deliver(state, {:remote_sync, remote_effects}) do
     # Logger.debug("node #{inspect(state.name)} received remote sync: #{inspect(remote_effects)}")
-    new_db = DB.apply_remote_effects(state.db, remote_effects)
+    new_db = SB_DB.apply_remote_effects(state.db, remote_effects)
     %{state | db: new_db}
   end
 
   @impl true
-  def handle_periodic_sync(%{conf: conf, name: name, db: %DB{crdts: crdts, updated_crdts: updated_crdts} = db} = state) do
+  def handle_periodic_sync(%{conf: conf, name: name, db: %SB_DB{crdts: crdts, updated_crdts: updated_crdts} = db} = state) do
     # Logger.debug("node #{inspect(name)} syncing")
     if conf.sb_sync_method == :updates_only do
       to_send = Map.take(crdts, Enum.to_list(updated_crdts))
@@ -66,7 +67,7 @@ defmodule SB.SB_Node do
       BaseLinkLayer.propagate(name, {:remote_sync, crdts}, nil)
     end
 
-    new_db = DB.clear_updated_crdts(db)
+    new_db = SB_DB.clear_updated_crdts(db)
 
     %{state | db: new_db}
   end

@@ -36,7 +36,9 @@ defmodule Analyzer.CrdtAnalyzer do
     GenServer.cast(:analyzer, :reset)
   end
 
-  def record_memory_usage(state, replica_time_stamp) do
+  def record_memory_usage(state) do
+    now_wall_clock_time = :erlang.statistics(:wall_clock) |> elem(0)
+    replica_time_stamp = now_wall_clock_time - state.init_wall_clock_time
     name = state.name
     db_size = :erlang.external_size(state.db)
     total_state_size = :erlang.external_size(state)

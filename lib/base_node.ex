@@ -84,9 +84,7 @@ defmodule BaseNode do
   end
 
   def record_memory_usage(state) do
-    now_wall_clock_time = :erlang.statistics(:wall_clock) |> elem(0)
-    replica_time_stamp = now_wall_clock_time - state.init_wall_clock_time
-    CrdtAnalyzer.record_memory_usage(state, replica_time_stamp)
+    CrdtAnalyzer.record_memory_usage(state)
   end
 
   @spec sync_now(binary()) :: any()

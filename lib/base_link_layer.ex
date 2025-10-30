@@ -94,7 +94,8 @@ defmodule BaseLinkLayer do
 
   @impl true
   def handle_call({:add_neighbour, neighbour}, _from, %{neighbours: neighbours} = state) do
-    if neighbours == [] do
+    if neighbours == MapSet.new() do
+      # Logger.debug("#{state.name} adding first neighbour: #{neighbour}")
       BaseNode.do_peer_full_sync(state.name, neighbour)
     end
     {:reply, :ok, %{state | neighbours: MapSet.put(state.neighbours, neighbour)}}
@@ -116,8 +117,8 @@ defmodule BaseLinkLayer do
     GenServer.cast(atom_name(name), {:propagate, msg, conf})
   end
 
-  def send_to_replica(from, to, msg) do
-    GenServer.cast(atom_name(from), {:send_to_replica, to, msg})
+  def send_to_node(from, to, msg) do
+    GenServer.cast(atom_name(from), {:send_to_node, to, msg})
   end
 
   def subscribe(name, subscription, topic) do
@@ -137,7 +138,7 @@ defmodule BaseLinkLayer do
   end
 
   @impl true
-  def handle_cast({:send_to_replica, to, msg}, state) do
+  def handle_cast({:send_to_node, to, msg}, state) do
     BaseLinkLayer.deliver(state, to, msg)
     {:noreply, state}
   end

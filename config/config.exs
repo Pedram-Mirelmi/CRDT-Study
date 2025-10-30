@@ -11,7 +11,7 @@ config :crdt_comparison,
   bd_push_model2?: false,
   bd_pull_model?: true,
 
-  debugging: false
+  debugging: true
 
 config :logger, :console,
   level: :debug,
