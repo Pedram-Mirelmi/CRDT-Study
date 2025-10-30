@@ -24,13 +24,13 @@ defmodule Crdts.Set_GO_JD do
 
   @impl true
   def downstream_effect(%Set_GO_JD{}, {:add, [element]}) do
-    %{adds: MapSet.new([element])}
+    %Set_GO_JD{adds: MapSet.new([element])}
   end
 
   def empty_state() do
-    %{adds: MapSet.new()}
+    %Set_GO_JD{adds: MapSet.new()}
   end
-  
+
   @impl true
   def affect(%Set_GO_JD{adds: adds}, %{adds: eff_adds}) do
     new_adds = MapSet.union(adds, eff_adds)
@@ -38,12 +38,18 @@ defmodule Crdts.Set_GO_JD do
   end
 
   # @impl true
-  def merge_state(%Set_GO_JD{adds: adds1}, %{adds: adds2}) do
+  def merge_states(%Set_GO_JD{adds: adds1}, %{adds: adds2}) do
     %Set_GO_JD{adds: MapSet.union(adds1, adds2)}
   end
 
+  def merge_states(states) do
+    Enum.reduce(states, %Set_GO_JD{adds: MapSet.new()}, fn %Set_GO_JD{adds: adds}, acc ->
+      %Set_GO_JD{adds: MapSet.union(acc.adds, adds)}
+    end)
+  end
+
   @impl true
-  def causes_inflation?(%Set_GO_JD{adds: adds}, %{adds: eff_adds}) do
+  def causes_inflation?(%Set_GO_JD{adds: adds}, %Set_GO_JD{adds: eff_adds}) do
     not MapSet.subset?(eff_adds, adds)
   end
 

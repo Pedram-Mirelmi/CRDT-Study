@@ -1,45 +1,53 @@
 defmodule JD.JD_Buffer do
+  require Logger
   alias JD.JD_Buffer
   defstruct crdts_deltas: %{}
-
-
 
   def new() do
     %JD.JD_Buffer{}
   end
 
+  def store_effective_remote_deltas(%JD_Buffer{crdts_deltas: regular_delta_buffer}, remote_crdt_buffer, nil) do
+    new_crdts_deltas =
+      Enum.reduce(remote_crdt_buffer, regular_delta_buffer, fn {key, remote_single_crdt_jds_set}, acc_regular_delta_buffer ->
+        local_single_crdt_delta_jds = Map.get(acc_regular_delta_buffer, key, MapSet.new())
 
-  def get(this) do
-    this.crdts_deltas
-  end
+        updated_single_crdt_delta_jds = MapSet.union(local_single_crdt_delta_jds, remote_single_crdt_jds_set)
 
-  def merge_buffer(this, other, bp?) do
-    if bp? do
-      %JD_Buffer{ this | crdts_deltas: merge_if_bp_optimized(this, other)}
-    else
-      %JD_Buffer{ this | crdts_deltas: merge_if_regular(this, other)}
-    end
-  end
-
-  def remove_origin(this, origin_neighbour) do
-    new_bp_optimized_data = Enum.reduce(this.crdts_deltas, %{}, fn {key, single_crdt_delta_group}, acc ->
-      Map.put(acc, key, Map.delete(single_crdt_delta_group, origin_neighbour))
-    end)
-    %JD_Buffer{this | crdts_deltas: new_bp_optimized_data}
-  end
-
-
-  defp merge_if_bp_optimized(this, other) do
-    Map.merge(this.crdts_deltas, other.crdts_deltas, fn _key, val1, val2 ->
-      Map.merge(val1, val2, fn _origin, set1, set2 ->
-        MapSet.union(set1, set2)
+        Map.put(acc_regular_delta_buffer, key, updated_single_crdt_delta_jds)
       end)
-    end)
+    %JD_Buffer{crdts_deltas: new_crdts_deltas}
   end
 
-  defp merge_if_regular(this, other) do
-    Map.merge(this.crdts_deltas, other.crdts_deltas, fn _key, set1, set2 ->
-      MapSet.union(set1, set2)
+  def store_effective_remote_deltas(%JD_Buffer{crdts_deltas: bp_optimized_delta_buffer}, remote_crdt_buffer, origin) do
+    new_crdts_deltas =
+      Enum.reduce(remote_crdt_buffer, bp_optimized_delta_buffer, fn {key, remote_single_crdt_jds_set}, acc_bp_optimized_delta_buffer ->
+        local_single_crdt_delta_jds = Map.get(acc_bp_optimized_delta_buffer, key, MapSet.new())
+        entries_to_add = remote_single_crdt_jds_set |> Enum.map( &({origin, &1}) ) |> MapSet.new()
+
+        updated_local_single_crdt_delta_jds = MapSet.union(local_single_crdt_delta_jds, MapSet.new(entries_to_add))
+
+        Map.put(acc_bp_optimized_delta_buffer, key, updated_local_single_crdt_delta_jds)
+      end)
+    %JD_Buffer{crdts_deltas: new_crdts_deltas}
+  end
+
+
+
+  def remove_jds_from_origin(%JD_Buffer{crdts_deltas: bp_optimized_delta_buffer}, origin_neighbour) do
+    Enum.reduce(bp_optimized_delta_buffer, %{}, fn {key, single_crdt_jds_set}, acc ->
+      removed_origin_jds_set = Enum.reduce(single_crdt_jds_set, MapSet.new(), fn {origin, jd}, acc_jd_set ->
+        if origin != origin_neighbour do
+          MapSet.put(acc_jd_set, jd)
+        else
+          acc_jd_set
+        end
+      end) |> MapSet.new()
+      if MapSet.size(removed_origin_jds_set) != 0 do
+        Map.put(acc, key, removed_origin_jds_set)
+      else
+        acc
+      end
     end)
   end
 

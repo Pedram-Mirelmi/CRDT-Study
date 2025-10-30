@@ -76,8 +76,9 @@ defmodule BaseLinkLayer do
     :ok = GenServer.call(atom_name(name), {:remove_neighbour, neighbour})
   end
 
-  def deliver(name, msg) do
-    GenServer.cast(atom_name(name), {:deliver, msg})
+  def deliver(sender_state, to, msg) do
+    record_network_traffic(sender_state, msg, :out)
+    GenServer.cast(atom_name(to), {:deliver, msg})
   end
 
   def record_network_traffic(state, network_msg, traffic_type) do
@@ -136,9 +137,8 @@ defmodule BaseLinkLayer do
   end
 
   @impl true
-  def handle_cast({:send_to_replica, to, msg, _conf}, state) do
-    BaseLinkLayer.deliver(to, msg)
-    record_network_traffic(state, msg, :out)
+  def handle_cast({:send_to_replica, to, msg}, state) do
+    BaseLinkLayer.deliver(state, to, msg)
     {:noreply, state}
   end
 

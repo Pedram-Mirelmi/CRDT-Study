@@ -112,6 +112,12 @@ defmodule BaseNode do
   end
 
   @impl true
+  def handle_call(request, from, state) do
+    Logger.warning("Unhandled call request to #{inspect(state.name)}: #{inspect(request)} from #{inspect(from)}")
+    {:reply, :ok, state}
+  end
+
+  @impl true
   def handle_cast({:update, key, update}, state) do
     new_state = state.module.handle_update(state, key, update)
     record_memory_usage(new_state)
@@ -131,6 +137,12 @@ defmodule BaseNode do
     {:noreply, new_state}
   end
 
+  @impl true
+  def handle_cast(request, state) do
+    Logger.warning("Unhandled cast request to #{inspect(state.name)}: #{inspect(request)}")
+    {:noreply, state}
+  end
+
 
   @impl true
   def handle_info(:periodic_sync, state) do
@@ -138,5 +150,11 @@ defmodule BaseNode do
     record_memory_usage(new_state)
     Process.send_after(self(), :periodic_sync, state.conf.sync_interval)
     {:noreply, new_state}
+  end
+
+  @impl true
+  def handle_info(msg, state) do
+    Logger.warning("Unhandled info msg to #{inspect(state.name)}: #{inspect(msg)}")
+    {:noreply, state}
   end
 end

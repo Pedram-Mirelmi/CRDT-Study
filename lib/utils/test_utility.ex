@@ -1,4 +1,5 @@
 defmodule Utils.SimulationUtility do
+  alias Utils.SimulationUtility
   alias Analyzer.CrdtAnalyzer
   use ExUnit.Case
   require Logger
@@ -6,7 +7,9 @@ defmodule Utils.SimulationUtility do
   @long_text "Lorem ipsum dolor sit amet, consectetur "
   @short_text ""
 
-  @repititions 10
+  def repetitions() do
+    if Utility.debugging(), do: 1, else: 10
+  end
 
   def trigger_set_add_update(n_nodes, n_objects, object_type, n_elements_per_object, node_module, pause) do
     Process.spawn(fn ->
@@ -42,12 +45,12 @@ defmodule Utils.SimulationUtility do
     Logger.debug("Starting simulation: Topology=#{topology_name}, Node=#{node_module |> Module.split() |> List.last()}, Conf=#{conf_name}, CRDT=#{crdt_module |> Module.split() |> List.last()}, sync_approach=#{manual_sync_approach}")
     key = {"key", crdt_module}
 
-    for i <- 0..(@repititions*n_nodes-1) do
+    for i <- 0..(SimulationUtility.repetitions()*n_nodes-1) do
       target_node_index = rem(i, n_nodes)
       target_node_name = "node" <> Integer.to_string(target_node_index)
       update = sample_update(crdt_data_type, i)
       BaseNode.update(target_node_name, key, update)
-      if manual_sync_approach != :also_immediately do
+      if manual_sync_approach == :also_immediately do
         BaseNode.sync_now(target_node_name)
       end
       :timer.sleep(20)
@@ -72,7 +75,7 @@ defmodule Utils.SimulationUtility do
     save_metrices(file_name)
     CrdtAnalyzer.reset()
     # reset analyzer
-    topology_teardown_fun.(n_nodes)
+    topology_teardown_fun.()
   end
 
   def get_long_text() do

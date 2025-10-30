@@ -9,15 +9,11 @@ defmodule JD.JD_LinkLayer do
   def handle_propagate(state, {:remote_sync, delta_buffer}, bp?) do
     Enum.each(state.neighbours, fn neighbour ->
       if bp? do
-        all_crdts_bp_optimized_delta_groups = JD_Buffer.remove_origin(delta_buffer, neighbour)
-
-        BaseLinkLayer.record_network_traffic(state, {:remote_sync, all_crdts_bp_optimized_delta_groups}, :out)
-        BaseLinkLayer.deliver(neighbour, {:remote_sync, all_crdts_bp_optimized_delta_groups})
+        all_crdts_bp_optimized_delta_groups = JD_Buffer.remove_jds_from_origin(delta_buffer, neighbour)
+        BaseLinkLayer.deliver(state, neighbour, {:remote_sync, all_crdts_bp_optimized_delta_groups, state.name})
       else
         Enum.each(state.neighbours, fn neighbour ->
-          # Logger.debug("ll #{inspect(name)} propagating to #{inspect(neighbour)}: #{inspect(msg)}")
-          BaseLinkLayer.record_network_traffic(state, {:remote_sync, delta_buffer}, :out)
-          BaseLinkLayer.deliver(neighbour, {:remote_sync, delta_buffer})
+          BaseLinkLayer.deliver(state, neighbour, {:remote_sync, delta_buffer.crdts_deltas})
         end)
       end
     end)

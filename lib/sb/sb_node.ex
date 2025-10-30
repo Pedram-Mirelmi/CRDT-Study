@@ -12,7 +12,6 @@ defmodule SB.SB_Node do
   def default_conf() do
     %{
       sync_interval: Application.get_env(:crdt_comparison, :sync_interval, 300),
-      bp?: Application.get_env(:crdt_comparison, :bp?, true),
       sb_sync_method: Application.get_env(:crdt_comparison, :sb_sync_method, :updates_only)
     }
   end

@@ -15,7 +15,7 @@ defmodule Crdts.Set_GO_ND do
 
   defstruct adds: MapSet.new()
 
-  
+
 
   @impl true
   def new() do
@@ -43,8 +43,14 @@ defmodule Crdts.Set_GO_ND do
   end
 
   # @impl true
-  def merge_state(%Set_GO_ND{adds: adds1}, %{adds: adds2}) do
+  def merge_states(%Set_GO_ND{adds: adds1}, %{adds: adds2}) do
     %Set_GO_ND{adds: MapSet.union(adds1, adds2)}
+  end
+
+  def merge_states(states) do
+    Enum.reduce(states, %Set_GO_ND{adds: MapSet.new()}, fn %Set_GO_ND{adds: adds}, acc ->
+      %Set_GO_ND{adds: MapSet.union(acc.adds, adds)}
+    end)
   end
 
   @impl true

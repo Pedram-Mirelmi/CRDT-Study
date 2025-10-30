@@ -42,9 +42,9 @@ defmodule ND.ND_Node do
     {crdt_type, crdt} = ND_DB.get_crdt(state.db, key)
     delta = CRDT.downstream_effect(crdt_type, crdt, update)
     if state.conf.bp? do
-      store(state, %ND_Buffer{crdts_deltas: %{key => %{state.name => delta}}})
+      store(state, %{key => delta}, state.name)
     else
-      store(state, %ND_Buffer{crdts_deltas: %{key => delta}})
+      store(state, %{key => delta})
     end
   end
 
@@ -61,6 +61,11 @@ defmodule ND.ND_Node do
 
 
   @impl true
+  def handle_ll_deliver(state, {:remote_sync, remote_effects, origin}) do
+    store(state, remote_effects, origin)
+  end
+
+  @impl true
   def handle_ll_deliver(state, {:remote_sync, remote_effects}) do
     store(state, remote_effects)
   end
@@ -71,12 +76,14 @@ defmodule ND.ND_Node do
     if state.buffer.crdts_deltas != %{} do
       BaseLinkLayer.propagate(state.name, {:remote_sync, state.buffer}, state.conf.bp?)
     end
-    %{state | buffer: %ND_Buffer{}}
+    %{state | buffer: ND_Buffer.new()}
   end
 
-  defp store(state, remote_buffer) do
-    {new_db, effective_deltas_in_buffer} = ND_DB.apply_deltas(state.db, remote_buffer, state.conf.bp?)
-    new_buffer = ND_Buffer.store_effective_remote_deltas(state.buffer, effective_deltas_in_buffer, state.conf.bp?)
+
+  defp store(state, buffer, origin \\ nil) do # nil means not bp-optimized
+    {new_db, effective_deltas_in_buffer} = ND_DB.apply_deltas(state.db, buffer)
+
+    new_buffer = ND_Buffer.store_effective_remote_deltas(state.buffer, effective_deltas_in_buffer, origin)
 
     %{state | db: new_db, buffer: new_buffer}
   end

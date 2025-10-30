@@ -39,14 +39,11 @@ defmodule JD.JD_Node do
     # Logger.debug("node #{inspect(state.name)} updating #{inspect(key)} with #{inspect(update)}")
     {crdt_type, crdt} = JD_DB.get_crdt(state.db, key)
     delta = CRDT.downstream_effect(crdt_type, crdt, update)
-    new_state =
-      if state.conf.bp? do
-        store(state, %JD_Buffer{crdts_deltas: %{key => %{state.name => MapSet.new([delta])}}})
-      else
-        store(state, %JD_Buffer{crdts_deltas: %{key => MapSet.new([delta])}})
-      end
-
-    new_state
+    if state.conf.bp? do
+      store(state, %{key => MapSet.new([delta])}, state.name)
+    else
+      store(state, %{key => MapSet.new([delta])})
+    end
   end
 
   @impl true
@@ -61,19 +58,15 @@ defmodule JD.JD_Node do
 
   @impl true
   def handle_ll_deliver(state, {:remote_sync, remote_buffer}) do
-    strictly_inflating_crdts_deltas = JD_DB.compute_strictly_inflating_deltas(state.db, remote_buffer.crdts_deltas, state.conf.bp?)
-    strictly_effective_remote_buffer = %JD_Buffer{crdts_deltas: strictly_inflating_crdts_deltas}
-    # Logger.debug("\nnode #{inspect(state.name)} received remote buffer: #{inspect(remote_buffer)}, strictly inflating deltas: #{inspect(strictly_inflating_crdts_deltas)}\nwhile self buffer: #{inspect(state.buffer)}")
-    maybe_new_state =
-      if strictly_inflating_crdts_deltas != %{} do
-        store(state, strictly_effective_remote_buffer)
-      else
-        state
-      end
-
-    maybe_new_state
+    # Logger.debug("#{inspect(state.name)} received remote buffer from #{}: #{inspect(remote_buffer)}, strictly inflating deltas: #{inspect(strictly_inflating_crdts_deltas)}\nwhile self buffer: #{inspect(state.buffer)}")
+    store(state, remote_buffer)
   end
 
+  @impl true
+  def handle_ll_deliver(state, {:remote_sync, remote_buffer, origin}) do
+    # Logger.debug("#{inspect(state.name)} received remote buffer from #{}: #{inspect(remote_buffer)}, strictly inflating deltas: #{inspect(strictly_inflating_crdts_deltas)}\nwhile self buffer: #{inspect(state.buffer)}")
+    store(state, remote_buffer, origin)
+  end
 
   @impl true
   def handle_periodic_sync(state) do
@@ -85,12 +78,12 @@ defmodule JD.JD_Node do
     %{state | buffer: JD_Buffer.new()}
   end
 
-  defp store(state, buffer) do
+  defp store(state, buffer, origin \\ nil) do
     # merge state:
-    new_db = JD_DB.apply_deltas(state.db, buffer.crdts_deltas, state.conf.bp?)
+    {new_db, effective_deltas_in_buffer} = JD_DB.apply_deltas(state.db, buffer)
 
     # store in self buffer:
-    new_buffer = JD_Buffer.merge_buffer(state.buffer, buffer, state.conf.bp?)
+    new_buffer = JD_Buffer.store_effective_remote_deltas(state.buffer, effective_deltas_in_buffer, origin)
 
     %{state | buffer: new_buffer, db: new_db}
   end
