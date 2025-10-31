@@ -100,3 +100,5 @@ This will run the general scenario given in the `Utils.SimulationUtility.run_sim
 - Then gets the execution metrics from `CrdtAnalyzer` and write it to a file named after the execution's settings, e.g. `Partial mesh, 10 nodes, 4 conn | JD_Node | bp=true | also_immediately | set-Set_GO_JD.json`. Later, in the given python jupyter notebook `/python/plot.ipynb`, you can plot this data using various given functions. 
 
 You can also write your own more complex and flexible scenarios and run them. For example, the scenario in which a node is crashed (or disconnected from the cluster) is given in `/test/dm_cases_test.exs` file which demonstrates the advantage of Big-Delta CRDTs.
+
+*You might see a warning message in the terminal saying the simulation didn't converge. This might be due to choosing random picking method in BD which is probabilistic and generally takes longer to converge. If you faced this, try rerunning the simulation or increasing the sleep time in `SimulationUtility.run_simulation_for` function (line 79 or 75, change 10 to a higher number, or in line 79 increase the manual sync times (default is n_nodes)) 
