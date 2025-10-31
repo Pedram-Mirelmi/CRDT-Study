@@ -145,6 +145,7 @@ defmodule BaseLinkLayer do
 
   @impl true
   def handle_cast({:deliver, msg}, state) do
+    # Logger.debug("#{state.name} delivered #{inspect(msg)}")
     SubHandler.publish(state.sub_handler, :ll_deliver, msg)
     record_network_traffic(state, msg, :in)
     {:noreply, state}

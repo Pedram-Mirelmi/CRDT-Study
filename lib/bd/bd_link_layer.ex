@@ -6,7 +6,7 @@ defmodule BD.BD_LinkLayer do
   end
 
   def handle_propagate(state, msg, bd_sync_method) do
-    Logger.debug(" #{state.name} syncing")
+    # Logger.debug(" #{state.name} syncing")
     case bd_sync_method do
       :all ->
         Enum.each(state.neighbours, fn neighbour ->
@@ -17,7 +17,7 @@ defmodule BD.BD_LinkLayer do
         neighbours = state.neighbours
         if MapSet.size(neighbours) != 0 do
           neighbour = state.neighbours |> Enum.random()
-          Logger.debug("#{state.name} pulling from #{neighbour} to periodic sync")
+          # Logger.debug("#{state.name} pulling from #{neighbour} to periodic sync")
           BaseLinkLayer.deliver(state, neighbour, msg)
         end
       other ->

@@ -72,13 +72,13 @@ defmodule Utils.SimulationUtility do
       crdt_data_type,
       crdt_module,
       manual_sync_approach,
-      20
+      10 # increase this 10ms if the simulation doesn't converge
     )
 
 
-    perform_manual_sync_on_nodes(n_nodes, n_nodes, 20)
+    perform_manual_sync_on_nodes(n_nodes, n_nodes, 10) # increase this 10ms if the simulation doesn't converge
 
-    :timer.sleep(200)
+    :timer.sleep(300)
 
     metrics_dir = if Utility.debugging(), do: "metrics_debug", else: "metrics"
 
@@ -108,7 +108,17 @@ defmodule Utils.SimulationUtility do
   def assert_states_equal(nodes_states) do
     one_elements_set = (nodes_states |> Map.values() |> MapSet.new() |> MapSet.size())
     result = one_elements_set == 1
-    
+
+
+    # Enum.each(nodes_states, fn {node1, state1} ->
+    #   Enum.each(nodes_states, fn {node2, state2} ->
+    #     if state1 != state2 do
+    #       Logger.warning("States of #{node1} and #{node2} are not equal: \n\n#{inspect(state1)} \n\nvs \n\n #{inspect(state2)}\n\n==================\n\n")
+    #     end
+    #     # assert state1 == state2, "States of #{node1} and #{node2} are not equal: \n\n#{inspect(state1)} \n\nvs \n\n #{inspect(state2)}"
+    #   end)
+    # end)
+
     result
   end
 

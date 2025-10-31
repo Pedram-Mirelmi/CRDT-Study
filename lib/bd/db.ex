@@ -41,13 +41,17 @@ defmodule BD.BD_DB do
   end
 
 
-  def compute_delta_from_crdt_vcs(this, crdts_vcs) do
-    Enum.reduce(crdts_vcs, %{}, fn {{_key_bin, crdt_type} = key, crdt_vc}, acc_deltas ->
-      {_crdt_type, local_crdt} = get_crdt(this, key)
-      delta = crdt_type.get_delta(local_crdt, crdt_vc)
-      if Kernel.map_size(delta.elements) > 0 do
-        # Logger.warning("non-empty delta between me: #{inspect(local_crdt)} and vc: #{inspect(crdt_vc)}")
-        Map.put(acc_deltas, key, delta)
+  def compute_delta_from_crdt_vcs(this, remote_crdts_vcs) do
+    local_crdt_keys = this.crdts |> Map.keys() |> MapSet.new()
+    remote_keys = remote_crdts_vcs |> Map.keys() |> MapSet.new()
+    all_keys = MapSet.union(local_crdt_keys, remote_keys)
+    Enum.reduce(all_keys, %{}, fn key, acc_deltas ->
+      remote_crdt_vc = Map.get(remote_crdts_vcs, key, VectorClock.new())
+      {crdt_type, local_crdt} = get_crdt(this, key)
+      computed_delta = crdt_type.get_delta(local_crdt, remote_crdt_vc)
+      if computed_delta != crdt_type.empty_state() do
+        # Logger.warning("non-empty computed_delta between me: #{inspect(local_crdt)} and vc: #{inspect(crdt_vc)}")
+        Map.put(acc_deltas, key, computed_delta)
       else
         acc_deltas
       end

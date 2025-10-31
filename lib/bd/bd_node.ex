@@ -81,7 +81,7 @@ defmodule BD.BD_Node do
 
   @impl true
   def handle_ll_deliver(state, {:remote_deltas, remote_deltas}) do
-    Logger.debug("#{state.name} getting delta: #{inspect(remote_deltas)}")
+    # Logger.warning("#{state.name} getting delta: #{inspect(remote_deltas)}")
     new_db = BD_DB.apply_deltas(state.db, remote_deltas)
 
     %{state | db: new_db}
