@@ -6,6 +6,14 @@ defmodule ND.ND_Buffer do
     %ND_Buffer{}
   end
 
+  @doc """
+    regular_delta_buffer & remote_crdt_buffer:
+    %{
+      key => <crdt_substate>
+    }
+
+
+  """
   def store_effective_remote_deltas(%ND_Buffer{crdts_deltas: regular_delta_buffer}, remote_crdt_buffer, nil) do
     new_crdts_deltas =
       Enum.reduce(remote_crdt_buffer, regular_delta_buffer, fn {{_key_bin, crdt_type} = key, remote_single_crdt_delta}, acc_regular_delta_buffer ->
@@ -16,6 +24,20 @@ defmodule ND.ND_Buffer do
     %ND_Buffer{crdts_deltas: new_crdts_deltas}
   end
 
+
+  @doc """
+    bp_optimized_delta_buffer:
+    %{
+      key => %{
+        origin1 => <crdt_substate>
+      }
+    }
+
+    remote_crdt_buffer:
+    %{
+      key => <crdt_substate>
+    }
+  """
   def store_effective_remote_deltas(%ND_Buffer{crdts_deltas: bp_optimized_delta_buffer}, remote_crdt_buffer, origin) do
     new_crdts_deltas =
       Enum.reduce(remote_crdt_buffer, bp_optimized_delta_buffer, fn {{_key_bin, crdt_type} = key, remote_single_crdt_delta}, acc_bp_optimized_delta_buffer ->
@@ -29,7 +51,14 @@ defmodule ND.ND_Buffer do
   end
 
 
-
+   @doc """
+    bp_optimized_delta_buffer:
+    %{
+      key => %{
+        origin1 => <crdt_substate>
+      }
+    }
+  """
   def remove_deltas_from_origin(%ND_Buffer{crdts_deltas: bp_optimized_delta_buffer}, origin_neighbour) do
     Enum.reduce(bp_optimized_delta_buffer, %{}, fn {{_key_bin, crdt_type} = key, single_crdt_delta_map}, acc ->
       removed_origin_deltas_map = Map.delete(single_crdt_delta_map, origin_neighbour)

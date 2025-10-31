@@ -23,6 +23,9 @@ defmodule JD.JD_DB do
   end
 
 
+  @doc """
+  Applies the deltas (updates local crdts) and then return those strictly inflating jds
+  """
   def apply_deltas(%JD_DB{crdts: crdts} = this, remote_crdts_delta) do
     {updated_crdts, effective_crdts_deltas} =
       Enum.reduce(remote_crdts_delta, {%{}, %{}}, fn {{_key_bin, crdt_type} = key, crdt_delta_jds}, {acc_updated_crdts, acc_effective_crdts_deltas} ->

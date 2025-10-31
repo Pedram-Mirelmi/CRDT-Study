@@ -7,6 +7,12 @@ defmodule JD.JD_Buffer do
     %JD.JD_Buffer{}
   end
 
+  @doc """
+  regular_delta_buffer:
+  %{
+    key => MapSet.new(["a", "b", ...])
+  }
+  """
   def store_effective_remote_deltas(%JD_Buffer{crdts_deltas: regular_delta_buffer}, remote_crdt_buffer, nil) do
     new_crdts_deltas =
       Enum.reduce(remote_crdt_buffer, regular_delta_buffer, fn {key, remote_single_crdt_jds_set}, acc_regular_delta_buffer ->
@@ -19,6 +25,20 @@ defmodule JD.JD_Buffer do
     %JD_Buffer{crdts_deltas: new_crdts_deltas}
   end
 
+
+  @doc """
+  bp_optimized_delta_buffer:
+  %{
+    key => MapSet.new([{origin1, "a"}, {origin2, "b"}, ...])
+  }
+
+
+  remote_crdt_buffer:           we know all are from `origin`
+  %{
+    key => MapSet.new(["a", "b", ...])
+  }
+
+  """
   def store_effective_remote_deltas(%JD_Buffer{crdts_deltas: bp_optimized_delta_buffer}, remote_crdt_buffer, origin) do
     new_crdts_deltas =
       Enum.reduce(remote_crdt_buffer, bp_optimized_delta_buffer, fn {key, remote_single_crdt_jds_set}, acc_bp_optimized_delta_buffer ->
