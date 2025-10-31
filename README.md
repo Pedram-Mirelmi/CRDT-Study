@@ -72,6 +72,8 @@ As you can see all the simulation parameters have been placed in `/lib/utils/sim
 $ mix test test/general_cases_test.exs
 ```
 
+**Make sure you create the target output directory named `metrics` in the root directory of the repo**
+
 This might take some time depending on your chosen parameters and the number of resulted simulations.
 
 You can create custome topologies by adding tuples to the literal list returned by `topology_cases` function in this format:
