@@ -24,8 +24,7 @@ defmodule BD.BD_DB do
 
   def apply_local_update(this, key, update) do
     {crdt_type, local_crdt} = get_crdt(this, key)
-    {update_fun, update_args} = update
-    effect = crdt_type.downstream_effect(local_crdt, {update_fun, update_args ++ [this.replica_name]})
+    effect = crdt_type.downstream_effect(local_crdt, update)
     updated_crdt = crdt_type.affect(local_crdt, effect)
     %BD_DB{this | crdts: Map.put(this.crdts, key, updated_crdt)}
   end

@@ -28,7 +28,8 @@ defmodule Crdts.Set_GO_BD do
   end
 
   @impl true
-  def downstream_effect(%Set_GO_BD{elements: elements, vc: vc}, {:add, [element, replica]}) do
+  def downstream_effect(%Set_GO_BD{elements: elements, vc: vc}, {:add, [element]}) do
+    replica = Process.info(self(), :registered_name) |> elem(1)
     if not Map.has_key?(elements, element) do
       new_vc = VectorClock.increment(vc, replica)
       count = VectorClock.get(new_vc, replica)

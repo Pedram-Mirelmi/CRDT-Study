@@ -105,6 +105,10 @@ defmodule Utils.SimulationUtility do
     {:add, ["element-" <> Integer.to_string(i) <> "-" <> get_long_text()]}
   end
 
+  def sample_update(:counter, _i) do
+    {:increment, []}
+  end
+
   def assert_states_equal(nodes_states) do
     one_elements_set = (nodes_states |> Map.values() |> MapSet.new() |> MapSet.size())
     result = one_elements_set == 1

@@ -5,15 +5,19 @@ In this repository, I've developed the necessary modules to run simulations for 
 - CRDTs
     - Pure state-based; `sb` directory and its submodules
         - GSet
+        - GCounter
     - Naive delta-based; `nd` directory and its submodules
         - GSet
+        - GCounter
         - Allows for Back Propagation optimization
     - Join Decomposition delta-based 
         - GSet
+        - GCounter
         - Allows for Back Propagation optimization
         - Automatically applies 'Remove Redundant' optimization
     - Big-Delta (using vector clocks)
         - GSet
+        - GCounter
 
 - Topologies
     - Binary tree
@@ -21,7 +25,7 @@ In this repository, I've developed the necessary modules to run simulations for 
     - Full mesh
     - Simple pair
     - Dimond
-    - "Centric node"
+    - "Centric node" (a simple ring with only 1 nodes connecting to every other node)
 
 - Sync method
     - immediately after each update

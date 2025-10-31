@@ -15,6 +15,7 @@ defmodule Crdts.CRDT do
   """
 
 # ToDo: Improve type spec
+alias Crdts.Counter_GO
 alias Crdts.Set_GO_ND
 alias Crdts.Set_GO_SB
 alias Crdts.Set_GO_JD
@@ -26,6 +27,7 @@ alias Crdts.Set_GO_BD
     | Set_GO_SB
     | Set_GO_JD
     | Set_GO_BD
+    | Counter_GO
 
 
   @type crdt ::
@@ -33,6 +35,7 @@ alias Crdts.Set_GO_BD
     | %Set_GO_ND{}
     | %Set_GO_JD{}
     | %Set_GO_BD{}
+    | %Counter_GO{}
 
 
   @type operation :: atom()
@@ -62,6 +65,7 @@ alias Crdts.Set_GO_BD
   or (type == Set_GO_ND)
   or (type == Set_GO_JD)
   or (type == Set_GO_BD)
+  or (type == Counter_GO)
 
 
   defguard is_valid_atom_type?(atom)
